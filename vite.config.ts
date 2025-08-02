@@ -7,4 +7,8 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
+  base: '/circle-matrix/',
+  build: {
+    outDir: 'dist',
+  },
 });
