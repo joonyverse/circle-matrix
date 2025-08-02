@@ -69,9 +69,10 @@ export const createRectangleStrokeGeometry = (width: number, height: number, thi
   shape.lineTo(-width/2, height/2);
   shape.lineTo(-width/2, -height/2);
   
-  // 내부 구멍 (테두리 두께만큼 안쪽)
-  const innerWidth = width * (1 - thickness);
-  const innerHeight = height * (1 - thickness);
+  // 절대 두께 값으로 계산 (비율이 아닌 고정 크기)
+  const absoluteThickness = Math.min(width, height) * thickness; // 작은 쪽 크기를 기준으로
+  const innerWidth = width - 2 * absoluteThickness;
+  const innerHeight = height - 2 * absoluteThickness;
   
   if (innerWidth > 0 && innerHeight > 0) {
     const hole = new THREE.Path();
