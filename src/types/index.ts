@@ -38,6 +38,8 @@ export interface GuiControls {
     fill: string;
     stroke: string;
     originalStroke: string;
+    fillOpacity: number;
+    strokeOpacity: number;
     frequency: number;
     syncColors: boolean;
   };
@@ -45,6 +47,8 @@ export interface GuiControls {
     fill: string;
     stroke: string;
     originalStroke: string;
+    fillOpacity: number;
+    strokeOpacity: number;
     frequency: number;
     syncColors: boolean;
   };
@@ -52,6 +56,8 @@ export interface GuiControls {
     fill: string;
     stroke: string;
     originalStroke: string;
+    fillOpacity: number;
+    strokeOpacity: number;
     frequency: number;
     syncColors: boolean;
   };

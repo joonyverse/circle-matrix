@@ -60,6 +60,8 @@ const ThreeScene: React.FC = () => {
       fill: '#ff6b6b',
       stroke: '#ff5252',
       originalStroke: '#ff5252',
+      fillOpacity: 1.0,
+      strokeOpacity: 1.0,
       frequency: 1,
       syncColors: false
     },
@@ -67,6 +69,8 @@ const ThreeScene: React.FC = () => {
       fill: '#4ecdc4',
       stroke: '#26a69a',
       originalStroke: '#26a69a',
+      fillOpacity: 1.0,
+      strokeOpacity: 1.0,
       frequency: 1,
       syncColors: false
     },
@@ -74,6 +78,8 @@ const ThreeScene: React.FC = () => {
       fill: '#45b7d1',
       stroke: '#2196f3',
       originalStroke: '#2196f3',
+      fillOpacity: 1.0,
+      strokeOpacity: 1.0,
       frequency: 1,
       syncColors: false
     },
@@ -190,10 +196,32 @@ const ThreeScene: React.FC = () => {
           strokeColor = controls.colorGroup1.syncColors ? controls.colorGroup1.fill : controls.colorGroup1.stroke;
       }
 
+      // 투명도 설정
+      let fillOpacity, strokeOpacity;
+      switch (circle.colorGroup) {
+        case 0:
+          fillOpacity = controls.colorGroup1.fillOpacity;
+          strokeOpacity = controls.colorGroup1.strokeOpacity;
+          break;
+        case 1:
+          fillOpacity = controls.colorGroup2.fillOpacity;
+          strokeOpacity = controls.colorGroup2.strokeOpacity;
+          break;
+        case 2:
+          fillOpacity = controls.colorGroup3.fillOpacity;
+          strokeOpacity = controls.colorGroup3.strokeOpacity;
+          break;
+        default:
+          fillOpacity = controls.colorGroup1.fillOpacity;
+          strokeOpacity = controls.colorGroup1.strokeOpacity;
+      }
+
       // 채우기
       const fillMaterial = new THREE.MeshBasicMaterial({ 
         color: fillColor,
-        side: THREE.DoubleSide
+        side: THREE.DoubleSide,
+        transparent: fillOpacity < 1.0,
+        opacity: fillOpacity
       });
       const fillMesh = new THREE.Mesh(geometry, fillMaterial);
       group.add(fillMesh);
@@ -201,7 +229,9 @@ const ThreeScene: React.FC = () => {
       // 테두리
       const strokeMaterial = new THREE.MeshBasicMaterial({ 
         color: strokeColor,
-        side: THREE.DoubleSide
+        side: THREE.DoubleSide,
+        transparent: strokeOpacity < 1.0,
+        opacity: strokeOpacity
       });
       const strokeGeometry = createStrokeGeometry();
       const strokeMesh = new THREE.Mesh(strokeGeometry, strokeMaterial);
@@ -240,11 +270,39 @@ const ThreeScene: React.FC = () => {
           strokeColor = controls.colorGroup1.syncColors ? controls.colorGroup1.fill : controls.colorGroup1.stroke;
       }
 
+      // 투명도 설정
+      let fillOpacity, strokeOpacity;
+      switch (circle.colorGroup) {
+        case 0:
+          fillOpacity = controls.colorGroup1.fillOpacity;
+          strokeOpacity = controls.colorGroup1.strokeOpacity;
+          break;
+        case 1:
+          fillOpacity = controls.colorGroup2.fillOpacity;
+          strokeOpacity = controls.colorGroup2.strokeOpacity;
+          break;
+        case 2:
+          fillOpacity = controls.colorGroup3.fillOpacity;
+          strokeOpacity = controls.colorGroup3.strokeOpacity;
+          break;
+        default:
+          fillOpacity = controls.colorGroup1.fillOpacity;
+          strokeOpacity = controls.colorGroup1.strokeOpacity;
+      }
+
       const fillMesh = circle.mesh.children[0] as THREE.Mesh;
       const strokeMesh = circle.mesh.children[1] as THREE.Mesh;
       
-      (fillMesh.material as THREE.MeshBasicMaterial).color.set(fillColor);
-      (strokeMesh.material as THREE.MeshBasicMaterial).color.set(strokeColor);
+      const fillMaterial = fillMesh.material as THREE.MeshBasicMaterial;
+      const strokeMaterial = strokeMesh.material as THREE.MeshBasicMaterial;
+      
+      fillMaterial.color.set(fillColor);
+      fillMaterial.transparent = fillOpacity < 1.0;
+      fillMaterial.opacity = fillOpacity;
+      
+      strokeMaterial.color.set(strokeColor);
+      strokeMaterial.transparent = strokeOpacity < 1.0;
+      strokeMaterial.opacity = strokeOpacity;
     });
   };
 
@@ -443,6 +501,8 @@ const ThreeScene: React.FC = () => {
         updateColors();
       }
     });
+    group1.add(controls.colorGroup1, 'fillOpacity', 0, 1).name('Fill Opacity').onChange(updateColors);
+    group1.add(controls.colorGroup1, 'strokeOpacity', 0, 1).name('Stroke Opacity').onChange(updateColors);
     group1.add(controls.colorGroup1, 'frequency', 0, 5);
     group1.open();
 
@@ -468,6 +528,8 @@ const ThreeScene: React.FC = () => {
         updateColors();
       }
     });
+    group2.add(controls.colorGroup2, 'fillOpacity', 0, 1).name('Fill Opacity').onChange(updateColors);
+    group2.add(controls.colorGroup2, 'strokeOpacity', 0, 1).name('Stroke Opacity').onChange(updateColors);
     group2.add(controls.colorGroup2, 'frequency', 0, 5);
     group2.open();
 
@@ -493,6 +555,8 @@ const ThreeScene: React.FC = () => {
         updateColors();
       }
     });
+    group3.add(controls.colorGroup3, 'fillOpacity', 0, 1).name('Fill Opacity').onChange(updateColors);
+    group3.add(controls.colorGroup3, 'strokeOpacity', 0, 1).name('Stroke Opacity').onChange(updateColors);
     group3.add(controls.colorGroup3, 'frequency', 0, 5);
     group3.open();
 
