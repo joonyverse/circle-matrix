@@ -8,6 +8,8 @@ export enum ShapeType {
 export interface CircleData {
   position: { x: number; y: number; z: number };
   colorGroup: number;
+  columnIndex: number;
+  rowIndex: number;
   mesh?: THREE.Mesh;
 }
 
@@ -21,6 +23,8 @@ export interface GuiControls {
   circleRadius: number;
   rectangleWidth: number;
   rectangleHeight: number;
+  enableWidthScaling: boolean;
+  widthScaleFactor: number;
   rows: number;
   cols: number;
   rowSpacing: number;

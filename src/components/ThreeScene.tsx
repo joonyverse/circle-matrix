@@ -43,6 +43,8 @@ const ThreeScene: React.FC = () => {
     circleRadius: 0.8,
     rectangleWidth: 1.6,
     rectangleHeight: 1.2,
+    enableWidthScaling: false,
+    widthScaleFactor: 2.0,
     rows: 3,
     cols: 12,
     rowSpacing: 2,
@@ -167,14 +169,24 @@ const ThreeScene: React.FC = () => {
       controls.colorGroup3.frequency
     ]);
 
-    const geometry = createShapeGeometry(currentConfig);
-    
-    const createStrokeGeometry = () => {
-      return createShapeStrokeGeometry(currentConfig, controls.borderThickness);
-    };
-
     circles.forEach(circle => {
       const group = new THREE.Group();
+      
+      // Create geometry with variable width for this specific circle
+      const fillGeometry = createShapeGeometry(
+        currentConfig, 
+        circle.columnIndex, 
+        controls.enableWidthScaling, 
+        controls.widthScaleFactor
+      );
+      
+      const strokeGeometry = createShapeStrokeGeometry(
+        currentConfig, 
+        controls.borderThickness, 
+        circle.columnIndex, 
+        controls.enableWidthScaling, 
+        controls.widthScaleFactor
+      );
       
       // 색상 그룹에 따른 재료 선택
       let fillColor, strokeColor;
@@ -223,7 +235,7 @@ const ThreeScene: React.FC = () => {
         transparent: fillOpacity < 1.0,
         opacity: fillOpacity
       });
-      const fillMesh = new THREE.Mesh(geometry, fillMaterial);
+      const fillMesh = new THREE.Mesh(fillGeometry, fillMaterial);
       group.add(fillMesh);
 
       // 테두리
@@ -233,7 +245,6 @@ const ThreeScene: React.FC = () => {
         transparent: strokeOpacity < 1.0,
         opacity: strokeOpacity
       });
-      const strokeGeometry = createStrokeGeometry();
       const strokeMesh = new THREE.Mesh(strokeGeometry, strokeMaterial);
       group.add(strokeMesh);
 
@@ -323,7 +334,13 @@ const ThreeScene: React.FC = () => {
       if (!circle.mesh) return;
       
       const strokeMesh = circle.mesh.children[1] as THREE.Mesh;
-      const newStrokeGeometry = createShapeStrokeGeometry(currentConfig, controls.borderThickness);
+      const newStrokeGeometry = createShapeStrokeGeometry(
+        currentConfig, 
+        controls.borderThickness, 
+        circle.columnIndex, 
+        controls.enableWidthScaling, 
+        controls.widthScaleFactor
+      );
       
       strokeMesh.geometry.dispose();
       strokeMesh.geometry = newStrokeGeometry;
@@ -348,13 +365,24 @@ const ThreeScene: React.FC = () => {
       
       // 채우기 기하학 업데이트
       const fillMesh = circle.mesh.children[0] as THREE.Mesh;
-      const newFillGeometry = createShapeGeometry(currentConfig);
+      const newFillGeometry = createShapeGeometry(
+        currentConfig, 
+        circle.columnIndex, 
+        controls.enableWidthScaling, 
+        controls.widthScaleFactor
+      );
       fillMesh.geometry.dispose();
       fillMesh.geometry = newFillGeometry;
       
       // 테두리 기하학 업데이트
       const strokeMesh = circle.mesh.children[1] as THREE.Mesh;
-      const newStrokeGeometry = createShapeStrokeGeometry(currentConfig, controls.borderThickness);
+      const newStrokeGeometry = createShapeStrokeGeometry(
+        currentConfig, 
+        controls.borderThickness, 
+        circle.columnIndex, 
+        controls.enableWidthScaling, 
+        controls.widthScaleFactor
+      );
       strokeMesh.geometry.dispose();
       strokeMesh.geometry = newStrokeGeometry;
     });
@@ -453,8 +481,8 @@ const ThreeScene: React.FC = () => {
     const gridFolder = gui.addFolder('Grid Settings');
     gridFolder.add(controls, 'rows', 1, 50).step(1).name('Rows').onChange(createCircles);
     gridFolder.add(controls, 'cols', 1, 100).step(1).name('Columns').onChange(createCircles);
-    gridFolder.add(controls, 'rowSpacing', 0.5, 5).name('Row Spacing').onChange(createCircles);
-    gridFolder.add(controls, 'colSpacing', 0.5, 5).name('Column Spacing').onChange(createCircles);
+    gridFolder.add(controls, 'rowSpacing', 0.1, 20).name('Row Spacing').onChange(createCircles);
+    gridFolder.add(controls, 'colSpacing', 0.1, 20).name('Column Spacing').onChange(createCircles);
     gridFolder.open();
 
     // 도형 설정
@@ -466,6 +494,8 @@ const ThreeScene: React.FC = () => {
     shapeFolder.add(controls, 'circleRadius', 0.1, 3).name('Circle Radius').onChange(updateShapeSize);
     shapeFolder.add(controls, 'rectangleWidth', 0.2, 4).name('Rectangle Width').onChange(updateShapeSize);
     shapeFolder.add(controls, 'rectangleHeight', 0.2, 4).name('Rectangle Height').onChange(updateShapeSize);
+    shapeFolder.add(controls, 'enableWidthScaling').name('Enable Width Scaling').onChange(updateShapeSize);
+    shapeFolder.add(controls, 'widthScaleFactor', 1.0, 5.0).name('Width Scale Factor').onChange(updateShapeSize);
     shapeFolder.open();
 
 

@@ -11,12 +11,34 @@ export const createRectangleGeometry = (width: number, height: number): THREE.Bu
   return geometry;
 };
 
-export const createShapeGeometry = (config: CircleGridConfig): THREE.BufferGeometry => {
+export const calculateScaledWidth = (
+  baseWidth: number, 
+  columnIndex: number, 
+  totalColumns: number, 
+  scaleFactor: number, 
+  enableScaling: boolean
+): number => {
+  if (!enableScaling || totalColumns <= 1) {
+    return baseWidth;
+  }
+  
+  // Calculate progression from 0 to 1 across columns
+  const progression = columnIndex / (totalColumns - 1);
+  
+  // Apply scaling: start at baseWidth, scale up by factor
+  return baseWidth * (1 + (scaleFactor - 1) * progression);
+};
+
+export const createShapeGeometry = (config: CircleGridConfig, columnIndex?: number, enableWidthScaling?: boolean, widthScaleFactor?: number): THREE.BufferGeometry => {
   switch (config.shapeType) {
     case ShapeType.Circle:
       return createCircleGeometry(config.circleRadius);
-    case ShapeType.Rectangle:
-      return createRectangleGeometry(config.rectangleWidth, config.rectangleHeight);
+    case ShapeType.Rectangle: {
+      const width = columnIndex !== undefined && enableWidthScaling 
+        ? calculateScaledWidth(config.rectangleWidth, columnIndex, config.cols, widthScaleFactor || 1, enableWidthScaling)
+        : config.rectangleWidth;
+      return createRectangleGeometry(width, config.rectangleHeight);
+    }
     default:
       return createCircleGeometry(config.circleRadius);
   }
@@ -65,14 +87,17 @@ export const createRectangleStrokeGeometry = (width: number, height: number, thi
   return geometry;
 };
 
-export const createShapeStrokeGeometry = (config: CircleGridConfig, borderThickness: number): THREE.BufferGeometry => {
+export const createShapeStrokeGeometry = (config: CircleGridConfig, borderThickness: number, columnIndex?: number, enableWidthScaling?: boolean, widthScaleFactor?: number): THREE.BufferGeometry => {
   switch (config.shapeType) {
     case ShapeType.Circle: {
       const innerRadius = config.circleRadius * (1 - borderThickness);
       return new THREE.RingGeometry(innerRadius, config.circleRadius, 32);
     }
     case ShapeType.Rectangle: {
-      return createRectangleStrokeGeometry(config.rectangleWidth, config.rectangleHeight, borderThickness);
+      const width = columnIndex !== undefined && enableWidthScaling 
+        ? calculateScaledWidth(config.rectangleWidth, columnIndex, config.cols, widthScaleFactor || 1, enableWidthScaling)
+        : config.rectangleWidth;
+      return createRectangleStrokeGeometry(width, config.rectangleHeight, borderThickness);
     }
     default: {
       const innerRadius = config.circleRadius * (1 - borderThickness);
@@ -96,7 +121,9 @@ export const generateCirclePositions = (config: CircleGridConfig): CircleData[] 
       
       circles.push({
         position: { x, y, z },
-        colorGroup: 0 // Will be assigned later
+        colorGroup: 0, // Will be assigned later
+        columnIndex: col,
+        rowIndex: row
       });
     }
   }
