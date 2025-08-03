@@ -79,10 +79,14 @@ const ThreeScene: React.FC = () => {
     fill3: { r: 69, g: 183, b: 209, a: 1.0 },
     stroke3: { r: 33, g: 150, b: 243, a: 1.0 },
 
-    // Camera
+    // Camera (only position, settings use default values)
     cameraPositionX: 0,
     cameraPositionY: 0,
-    cameraPositionZ: 15,
+    cameraPositionZ: 15
+  };
+
+  // 카메라 설정 기본값 (UI에서 제거됨)
+  const cameraDefaults = {
     cameraMinDistance: 5,
     cameraMaxDistance: 50,
     cameraEnablePan: true,
@@ -132,7 +136,45 @@ const ThreeScene: React.FC = () => {
   const [controls, set] = useControls(() => ({
     // ⚙️ Quick Actions
     'Reset All': button(() => {
-      resetLevaValues(defaultSettings);
+      // 실제로 Leva UI에 존재하는 컨트롤들만 리셋
+      resetLevaValues({
+        rows: defaultSettings.rows,
+        cols: defaultSettings.cols,
+        rowSpacing: defaultSettings.rowSpacing,
+        colSpacing: defaultSettings.colSpacing,
+        shapeType: defaultSettings.shapeType,
+        circleRadius: defaultSettings.circleRadius,
+        rectangleWidth: defaultSettings.rectangleWidth,
+        rectangleHeight: defaultSettings.rectangleHeight,
+        enableWidthScaling: defaultSettings.enableWidthScaling,
+        widthScaleFactor: defaultSettings.widthScaleFactor,
+        borderThickness: defaultSettings.borderThickness,
+        cylinderAxis: defaultSettings.cylinderAxis,
+        cylinderCurvature: defaultSettings.cylinderCurvature,
+        cylinderRadius: defaultSettings.cylinderRadius,
+        objectPositionX: defaultSettings.objectPositionX,
+        objectPositionY: defaultSettings.objectPositionY,
+        objectPositionZ: defaultSettings.objectPositionZ,
+        rotationX: defaultSettings.rotationX,
+        rotationY: defaultSettings.rotationY,
+        rotationZ: defaultSettings.rotationZ,
+        backgroundColor: defaultSettings.backgroundColor,
+        frequency1: defaultSettings.frequency1,
+        syncColors1: defaultSettings.syncColors1,
+        fill1: defaultSettings.fill1,
+        stroke1: defaultSettings.stroke1,
+        frequency2: defaultSettings.frequency2,
+        syncColors2: defaultSettings.syncColors2,
+        fill2: defaultSettings.fill2,
+        stroke2: defaultSettings.stroke2,
+        frequency3: defaultSettings.frequency3,
+        syncColors3: defaultSettings.syncColors3,
+        fill3: defaultSettings.fill3,
+        stroke3: defaultSettings.stroke3,
+        cameraPositionX: defaultSettings.cameraPositionX,
+        cameraPositionY: defaultSettings.cameraPositionY,
+        cameraPositionZ: defaultSettings.cameraPositionZ
+      });
       resetCameraPosition();
       colorSeedRef.current = Math.floor(Math.random() * 1000000);
       createCircles();
@@ -657,13 +699,13 @@ const ThreeScene: React.FC = () => {
 
     // 카메라 컨트롤 설정
     const trackballControls = new TrackballControls(camera, renderer.domElement);
-    trackballControls.minDistance = defaultSettings.cameraMinDistance;
-    trackballControls.maxDistance = defaultSettings.cameraMaxDistance;
-    trackballControls.noPan = !defaultSettings.cameraEnablePan;
-    trackballControls.rotateSpeed = defaultSettings.rotateSpeed;
-    trackballControls.zoomSpeed = defaultSettings.zoomSpeed;
-    trackballControls.panSpeed = defaultSettings.panSpeed;
-    trackballControls.dynamicDampingFactor = defaultSettings.dynamicDampingFactor;
+    trackballControls.minDistance = cameraDefaults.cameraMinDistance;
+    trackballControls.maxDistance = cameraDefaults.cameraMaxDistance;
+    trackballControls.noPan = !cameraDefaults.cameraEnablePan;
+    trackballControls.rotateSpeed = cameraDefaults.rotateSpeed;
+    trackballControls.zoomSpeed = cameraDefaults.zoomSpeed;
+    trackballControls.panSpeed = cameraDefaults.panSpeed;
+    trackballControls.dynamicDampingFactor = cameraDefaults.dynamicDampingFactor;
 
     controlsRef.current = trackballControls;
   };
@@ -867,14 +909,14 @@ const ThreeScene: React.FC = () => {
 
   useEffect(() => {
     if (controlsRef.current) {
-      controlsRef.current.minDistance = defaultSettings.cameraMinDistance;
-      controlsRef.current.maxDistance = defaultSettings.cameraMaxDistance;
+      controlsRef.current.minDistance = cameraDefaults.cameraMinDistance;
+      controlsRef.current.maxDistance = cameraDefaults.cameraMaxDistance;
       if (controlsRef.current instanceof TrackballControls) {
-        controlsRef.current.noPan = !defaultSettings.cameraEnablePan;
-        controlsRef.current.rotateSpeed = defaultSettings.rotateSpeed;
-        controlsRef.current.zoomSpeed = defaultSettings.zoomSpeed;
-        controlsRef.current.panSpeed = defaultSettings.panSpeed;
-        controlsRef.current.dynamicDampingFactor = defaultSettings.dynamicDampingFactor;
+        controlsRef.current.noPan = !cameraDefaults.cameraEnablePan;
+        controlsRef.current.rotateSpeed = cameraDefaults.rotateSpeed;
+        controlsRef.current.zoomSpeed = cameraDefaults.zoomSpeed;
+        controlsRef.current.panSpeed = cameraDefaults.panSpeed;
+        controlsRef.current.dynamicDampingFactor = cameraDefaults.dynamicDampingFactor;
       }
     }
   }, []);
