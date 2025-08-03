@@ -74,7 +74,11 @@ const ThreeScene: React.FC = () => {
     cameraPositionZ: 15,
     cameraMinDistance: 5,
     cameraMaxDistance: 50,
-    cameraEnablePan: true
+    cameraEnablePan: true,
+    rotateSpeed: 1.0,
+    zoomSpeed: 1.2,
+    panSpeed: 0.8,
+    dynamicDampingFactor: 0.2
   };
 
   const getDefaultValues = () => {
@@ -268,7 +272,11 @@ const ThreeScene: React.FC = () => {
       Settings: folder({
         cameraMinDistance: { value: initialValues.cameraMinDistance, min: 1, max: 20 },
         cameraMaxDistance: { value: initialValues.cameraMaxDistance, min: 20, max: 200 },
-        cameraEnablePan: initialValues.cameraEnablePan
+        cameraEnablePan: initialValues.cameraEnablePan,
+        rotateSpeed: { value: initialValues.rotateSpeed, min: 0.1, max: 5.0 },
+        zoomSpeed: { value: initialValues.zoomSpeed, min: 0.1, max: 5.0 },
+        panSpeed: { value: initialValues.panSpeed, min: 0.1, max: 5.0 },
+        dynamicDampingFactor: { value: initialValues.dynamicDampingFactor, min: 0.0, max: 1.0 }
       }, { collapsed: false })
     }, { collapsed: true })
   }));
@@ -347,6 +355,10 @@ const ThreeScene: React.FC = () => {
     trackballControls.minDistance = controls.cameraMinDistance;
     trackballControls.maxDistance = controls.cameraMaxDistance;
     trackballControls.noPan = !controls.cameraEnablePan;
+    trackballControls.rotateSpeed = controls.rotateSpeed;
+    trackballControls.zoomSpeed = controls.zoomSpeed;
+    trackballControls.panSpeed = controls.panSpeed;
+    trackballControls.dynamicDampingFactor = controls.dynamicDampingFactor;
 
     controlsRef.current = trackballControls;
   };
@@ -546,15 +558,7 @@ const ThreeScene: React.FC = () => {
     }
   }, [controls.backgroundColor]);
 
-  useEffect(() => {
-    if (cameraRef.current) {
-      cameraRef.current.position.set(
-        controls.cameraPositionX,
-        controls.cameraPositionY,
-        controls.cameraPositionZ
-      );
-    }
-  }, [controls.cameraPositionX, controls.cameraPositionY, controls.cameraPositionZ]);
+  
 
   useEffect(() => {
     if (controlsRef.current) {
@@ -562,9 +566,13 @@ const ThreeScene: React.FC = () => {
       controlsRef.current.maxDistance = controls.cameraMaxDistance;
       if (controlsRef.current instanceof TrackballControls) {
         controlsRef.current.noPan = !controls.cameraEnablePan;
+        controlsRef.current.rotateSpeed = controls.rotateSpeed;
+        controlsRef.current.zoomSpeed = controls.zoomSpeed;
+        controlsRef.current.panSpeed = controls.panSpeed;
+        controlsRef.current.dynamicDampingFactor = controls.dynamicDampingFactor;
       }
     }
-  }, [controls.cameraMinDistance, controls.cameraMaxDistance, controls.cameraEnablePan]);
+  }, [controls.cameraMinDistance, controls.cameraMaxDistance, controls.cameraEnablePan, controls.rotateSpeed, controls.zoomSpeed, controls.panSpeed, controls.dynamicDampingFactor]);
 
   useEffect(() => {
     loadSettings();
