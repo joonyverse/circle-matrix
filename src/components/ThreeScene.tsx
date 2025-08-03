@@ -9,6 +9,7 @@ import {
   assignColorGroups,
   applyCylindricalTransform
 } from '../utils/circleGeometry';
+import { isDarkBackground } from '../utils/colorUtils';
 import ProjectManager from './ProjectManager';
 import SaveProjectModal from './SaveProjectModal';
 import DeleteConfirmModal from './DeleteConfirmModal';
@@ -1172,12 +1173,16 @@ const ThreeScene: React.FC = () => {
     settings.rotationX, settings.rotationY, settings.rotationZ
   ]);
 
-  // 배경색 변경 디바운싱
+  // 배경색 변경 디바운싱 및 테마 동적 변경
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       if (rendererRef.current) {
         rendererRef.current.setClearColor(settings.backgroundColor);
       }
+
+      // 배경색에 따라 테마 동적 변경
+      const isDark = isDarkBackground(settings.backgroundColor);
+      document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
     }, 16); // 약 60fps에 해당하는 지연
 
     return () => clearTimeout(timeoutId);
@@ -1504,7 +1509,8 @@ const ThreeScene: React.FC = () => {
             setShowProjectManager(!showProjectManager);
           }
         }}
-        className={`fixed top-4 left-4 z-20 p-3 rounded-2xl glass-strong text-[#007AFF] hover:text-[#0056CC] hover:scale-105 project-manager-toggle ${showProjectManager ? 'opacity-0 pointer-events-none scale-95' : 'opacity-100 scale-100'}`}
+        className={`fixed top-4 left-4 z-20 p-3 rounded-2xl glass-strong hover:scale-105 heading-hover project-manager-toggle ${showProjectManager ? 'opacity-0 pointer-events-none scale-95' : 'opacity-100 scale-100'}`}
+        style={{ color: 'var(--text-heading)' }}
         title={isZenMode ? "Show Project Panel" : "Open Project Panel"}
       >
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1549,7 +1555,8 @@ const ThreeScene: React.FC = () => {
       {/* Shortcuts Toggle Button */}
       <button
         onClick={() => setShowShortcutsGuide(prev => !prev)}
-        className={`fixed bottom-4 left-4 z-20 p-3 rounded-2xl glass-strong text-[#007AFF] hover:text-[#0056CC] hover:scale-105 smooth-transition ${showShortcutsGuide ? 'opacity-0 pointer-events-none scale-95' : 'opacity-100 scale-100'}`}
+        className={`fixed bottom-4 left-4 z-20 p-3 rounded-2xl glass-strong hover:scale-105 heading-hover smooth-transition ${showShortcutsGuide ? 'opacity-0 pointer-events-none scale-95' : 'opacity-100 scale-100'}`}
+        style={{ color: 'var(--text-heading)' }}
         title="Show Shortcuts"
       >
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

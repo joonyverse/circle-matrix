@@ -210,7 +210,7 @@ export const CaptureListModal: React.FC<CaptureListModalProps> = ({ isOpen, onCl
             title="Capture List"
             maxWidth="w-[70vw]"
         >
-            <div className="flex flex-col h-[70vh]" style={{ maxHeight: '70vh' }}>
+            <div className="flex flex-col h-[70vh] capture-modal" style={{ maxHeight: '70vh' }}>
                 {/* 선택 모드 헤더 */}
                 {isSelectMode && (
                     <div className="glass-strong rounded-xl p-3 border border-white/20 mb-4">
@@ -218,7 +218,8 @@ export const CaptureListModal: React.FC<CaptureListModalProps> = ({ isOpen, onCl
                             <div className="flex items-center gap-3">
                                 <button
                                     onClick={toggleSelectAll}
-                                    className="text-sm text-[#007AFF] hover:text-[#0056CC] smooth-transition"
+                                    className="text-sm smooth-transition"
+                                    style={{ color: 'var(--text-heading)' }}
                                 >
                                     {selectedItems.size === captures.length ? 'Deselect All' : 'Select All'}
                                 </button>
@@ -243,7 +244,8 @@ export const CaptureListModal: React.FC<CaptureListModalProps> = ({ isOpen, onCl
                                 </button>
                                 <button
                                     onClick={toggleSelectMode}
-                                    className="px-3 py-1 text-sm bg-white/10 text-[#007AFF] rounded-lg hover:bg-white/20 smooth-transition"
+                                    className="px-3 py-1 text-sm bg-white/10 rounded-lg hover:bg-white/20 smooth-transition"
+                                    style={{ color: 'var(--text-heading)' }}
                                 >
                                     Cancel
                                 </button>
@@ -257,7 +259,8 @@ export const CaptureListModal: React.FC<CaptureListModalProps> = ({ isOpen, onCl
                     <div className="flex justify-end mb-4">
                         <button
                             onClick={toggleSelectMode}
-                            className="px-3 py-1 text-sm bg-white/10 text-[#007AFF] rounded-lg hover:bg-white/20 smooth-transition"
+                            className="px-3 py-1 text-sm bg-white/10 rounded-lg hover:bg-white/20 smooth-transition"
+                            style={{ color: 'var(--text-heading)' }}
                         >
                             Select Mode
                         </button>
@@ -297,8 +300,8 @@ export const CaptureListModal: React.FC<CaptureListModalProps> = ({ isOpen, onCl
                                             {isSelectMode && (
                                                 <div className="absolute top-3 left-3 z-10">
                                                     <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all duration-200 ${selectedItems.has(capture.id)
-                                                            ? 'bg-[#007AFF] border-[#007AFF] shadow-lg shadow-[#007AFF]/30'
-                                                            : 'bg-white/90 backdrop-blur-sm border-white/60 hover:border-[#007AFF]/60 hover:bg-white/95'
+                                                        ? 'bg-[#007AFF] border-[#007AFF] shadow-lg shadow-[#007AFF]/30'
+                                                        : 'bg-white/90 backdrop-blur-sm border-white/60 hover:border-[#007AFF]/60 hover:bg-white/95'
                                                         }`}>
                                                         {selectedItems.has(capture.id) && (
                                                             <svg
@@ -327,7 +330,7 @@ export const CaptureListModal: React.FC<CaptureListModalProps> = ({ isOpen, onCl
                                             </div>
                                         </div>
                                         <div className="space-y-2">
-                                            <h3 className="font-medium text-[#007AFF] text-sm truncate">
+                                            <h3 className="font-medium text-sm truncate" style={{ color: 'var(--text-heading)' }}>
                                                 {capture.name}
                                             </h3>
                                             <p className="text-xs text-[#666]">
@@ -340,7 +343,8 @@ export const CaptureListModal: React.FC<CaptureListModalProps> = ({ isOpen, onCl
                                                             e.stopPropagation();
                                                             handleDownloadCapture(capture);
                                                         }}
-                                                        className="p-1 text-[#007AFF] hover:text-[#0056CC] hover:bg-[#007AFF]/10 rounded smooth-transition"
+                                                        className="p-1 hover:bg-gray-100 rounded smooth-transition"
+                                                        style={{ color: 'var(--text-heading)' }}
                                                         title="Download"
                                                     >
                                                         <Download className="w-3 h-3" />
@@ -350,7 +354,8 @@ export const CaptureListModal: React.FC<CaptureListModalProps> = ({ isOpen, onCl
                                                             e.stopPropagation();
                                                             handleShareCapture(capture);
                                                         }}
-                                                        className="p-1 text-[#007AFF] hover:text-[#0056CC] hover:bg-[#007AFF]/10 rounded smooth-transition"
+                                                        className="p-1 hover:bg-gray-100 rounded smooth-transition"
+                                                        style={{ color: 'var(--text-heading)' }}
                                                         title="Share"
                                                     >
                                                         <Share2 className="w-3 h-3" />
@@ -379,7 +384,7 @@ export const CaptureListModal: React.FC<CaptureListModalProps> = ({ isOpen, onCl
                         <div className="w-72 glass-weak rounded-xl p-4 border border-white/20">
                             <div className="space-y-4">
                                 <div>
-                                    <h3 className="font-semibold text-[#007AFF] mb-2">
+                                    <h3 className="font-semibold mb-2" style={{ color: 'var(--text-heading)' }}>
                                         {selectedCapture.name}
                                     </h3>
                                     <p className="text-sm text-[#666]">
@@ -396,7 +401,7 @@ export const CaptureListModal: React.FC<CaptureListModalProps> = ({ isOpen, onCl
                                 </div>
 
                                 <div className="space-y-2">
-                                    <h4 className="text-sm font-medium text-[#007AFF]">Settings</h4>
+                                    <h4 className="text-sm font-medium" style={{ color: 'var(--text-heading)' }}>Settings</h4>
                                     <div className="text-xs text-[#666] space-y-1 max-h-32 overflow-y-auto">
                                         <div>Rows: {selectedCapture.settings.rows}</div>
                                         <div>Columns: {selectedCapture.settings.cols}</div>

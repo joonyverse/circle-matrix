@@ -4,23 +4,41 @@
 
 /* Liquid Glass Design System */
 :root {
-    /* Light Theme Colors */
+    /* Light Theme Colors (기본값) */
     --glass-bg: rgba(255, 255, 255, 0.1);
     --glass-border: rgba(255, 255, 255, 0.2);
     --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
     --glass-backdrop: blur(20px);
 
-    /* Text Colors */
+    /* Dropdown specific colors */
+    --dropdown-bg: rgba(255, 255, 255, 0.95);
+    --dropdown-border: rgba(255, 255, 255, 0.3);
+
+    /* Modal specific colors */
+    --modal-bg: rgba(255, 255, 255, 0.95);
+    --modal-border: rgba(255, 255, 255, 0.3);
+    --modal-header-bg: rgba(255, 255, 255, 0.9);
+
+    /* Text Colors (기본값 - 밝은 배경용) */
     --text-primary: rgba(0, 0, 0, 0.9);
     --text-secondary: rgba(0, 0, 0, 0.7);
     --text-tertiary: rgba(0, 0, 0, 0.5);
+    --text-heading: rgba(0, 0, 0, 0.9);
 
     /* Accent Colors */
     --accent-blue: #007AFF;
+    --accent-blue-hover: #0056CC;
     --accent-green: #34C759;
     --accent-orange: #FF9500;
     --accent-red: #FF3B30;
     --accent-purple: #AF52DE;
+
+    /* Quick Actions 버튼 배경색 */
+    --quick-action-bg: rgba(0, 0, 0, 0.1);
+    --quick-action-hover-bg: rgba(0, 0, 0, 0.2);
+
+    /* Select Dropdown Arrow */
+    --select-arrow: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
 
     /* Background Gradients */
     --bg-gradient-1: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
@@ -31,6 +49,46 @@
     --shadow-soft: 0 2px 20px rgba(0, 0, 0, 0.08);
     --shadow-medium: 0 4px 30px rgba(0, 0, 0, 0.12);
     --shadow-strong: 0 8px 40px rgba(0, 0, 0, 0.16);
+}
+
+/* Dark Theme Override (어두운 배경용) */
+[data-theme="dark"] {
+    --glass-bg: rgba(0, 0, 0, 0.1);
+    --glass-border: rgba(0, 0, 0, 0.2);
+    --glass-shadow: 0 8px 32px rgba(255, 255, 255, 0.1);
+
+    /* Dropdown specific colors */
+    --dropdown-bg: rgba(0, 0, 0, 0.95);
+    --dropdown-border: rgba(0, 0, 0, 0.3);
+
+    /* Modal specific colors */
+    --modal-bg: rgba(0, 0, 0, 0.95);
+    --modal-border: rgba(0, 0, 0, 0.3);
+    --modal-header-bg: rgba(0, 0, 0, 0.9);
+
+    --text-primary: rgba(255, 255, 255, 0.9);
+    --text-secondary: rgba(255, 255, 255, 0.7);
+    --text-tertiary: rgba(255, 255, 255, 0.5);
+    --text-heading: rgba(255, 255, 255, 0.9);
+
+    --shadow-soft: 0 2px 20px rgba(255, 255, 255, 0.08);
+    --shadow-medium: 0 4px 30px rgba(255, 255, 255, 0.12);
+    --shadow-strong: 0 8px 40px rgba(255, 255, 255, 0.16);
+
+    /* 어두운 배경에서는 더 밝은 accent 색상 사용 */
+    --accent-blue: #4DA6FF;
+    --accent-blue-hover: #7BB8FF;
+    --accent-green: #5CDB95;
+    --accent-orange: #FFB366;
+    --accent-red: #FF6B6B;
+    --accent-purple: #C285FF;
+
+    /* Quick Actions 버튼 배경색 */
+    --quick-action-bg: rgba(255, 255, 255, 0.1);
+    --quick-action-hover-bg: rgba(255, 255, 255, 0.2);
+
+    /* Select Dropdown Arrow */
+    --select-arrow: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
 }
 
 /* Global Styles */
@@ -48,6 +106,7 @@ body {
     background: var(--bg-gradient-1);
     color: var(--text-primary);
     overflow: hidden;
+    transition: color 0.3s ease;
 }
 
 /* Liquid Glass Components */
@@ -60,18 +119,18 @@ body {
 }
 
 .glass-strong {
-    background: rgba(255, 255, 255, 0.15);
+    background: var(--glass-bg);
     backdrop-filter: blur(30px);
     -webkit-backdrop-filter: blur(30px);
-    border: 1px solid rgba(255, 255, 255, 0.25);
+    border: 1px solid var(--glass-border);
     box-shadow: var(--shadow-strong);
 }
 
 .glass-weak {
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--glass-bg);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--glass-border);
     box-shadow: var(--shadow-soft);
 }
 
@@ -82,6 +141,44 @@ body {
 
 .smooth-transition-fast {
     transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Accent Color Hover Effects */
+.accent-hover:hover {
+    color: var(--accent-blue-hover) !important;
+}
+
+/* Heading Text Hover Effects */
+.heading-hover:hover {
+    opacity: 0.8;
+}
+
+/* Quick Actions Button Hover Effects */
+.quick-action-hover {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.quick-action-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="dark"] .quick-action-hover:hover {
+    box-shadow: 0 6px 20px rgba(255, 255, 255, 0.2);
+}
+
+.quick-action-hover:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="dark"] .quick-action-hover:active {
+    box-shadow: 0 2px 8px rgba(255, 255, 255, 0.1);
+}
+
+/* Secondary Button Hover Background */
+.quick-action-hover:hover[style*="var(--quick-action-bg)"] {
+    background: var(--quick-action-hover-bg) !important;
 }
 
 /* Control Panel Slide Animation */
@@ -220,6 +317,121 @@ body {
     background: rgba(255, 255, 255, 0.1);
     border: 1px solid rgba(255, 255, 255, 0.2);
     color: var(--text-primary);
+}
+
+/* Select Dropdown Arrow */
+.select-dropdown {
+    background-image: var(--select-arrow) !important;
+    background-position: right 0.5rem center !important;
+    background-repeat: no-repeat !important;
+    background-size: 1.5em 1.5em !important;
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+}
+
+/* Select Dropdown Options Styling */
+.select-dropdown option {
+    background: var(--glass-bg);
+    color: var(--text-primary);
+    padding: 0.75rem 1rem;
+    border: none;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+}
+
+.select-dropdown option:hover {
+    background: var(--quick-action-hover-bg);
+    color: var(--text-primary);
+}
+
+.select-dropdown option:checked {
+    background: var(--accent-blue);
+    color: white;
+}
+
+.select-dropdown option:focus {
+    background: var(--accent-blue);
+    color: white;
+    outline: none;
+}
+
+/* Webkit browsers (Chrome, Safari) */
+.select-dropdown::-webkit-listbox {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 0.75rem;
+    box-shadow: var(--glass-shadow);
+    backdrop-filter: var(--glass-backdrop);
+    -webkit-backdrop-filter: var(--glass-backdrop);
+}
+
+.select-dropdown::-webkit-option {
+    background: transparent;
+    color: var(--text-primary);
+    padding: 0.75rem 1rem;
+    border: none;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+}
+
+.select-dropdown::-webkit-option:hover {
+    background: var(--quick-action-hover-bg);
+    color: var(--text-primary);
+}
+
+.select-dropdown::-webkit-option:checked {
+    background: var(--accent-blue);
+    color: white;
+}
+
+/* Firefox */
+.select-dropdown:-moz-focusring {
+    color: transparent;
+    text-shadow: 0 0 0 var(--text-primary);
+}
+
+.select-dropdown:-moz-listbox {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 0.75rem;
+    box-shadow: var(--glass-shadow);
+}
+
+/* Custom Dropdown Animation */
+@keyframes dropdownSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px) scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.custom-dropdown-enter {
+    animation: dropdownSlideIn 0.2s ease-out;
+}
+
+/* Dark theme dropdown hover */
+[data-theme="dark"] .custom-dropdown-enter button:hover:not([style*="background: var(--accent-blue)"]) {
+    background: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Dark theme capture modal hover */
+[data-theme="dark"] .capture-modal button:hover:not([style*="background: var(--accent-blue)"]) {
+    background: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Modal Backdrop */
+.modal-backdrop {
+    background-color: rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .modal-backdrop {
+    background-color: rgba(255, 255, 255, 0.1);
 }
 
 .input-glass:focus {

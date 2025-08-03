@@ -84,7 +84,7 @@ const SaveProjectModal: React.FC<SaveProjectModalProps> = ({
                 title="Save Project"
             >
                 <div className="mb-6">
-                    <label className="block text-[#007AFF] text-sm font-medium mb-3">Project Name:</label>
+                    <label className="block text-sm font-medium mb-3" style={{ color: 'var(--text-heading)' }}>Project Name:</label>
                     <input
                         type="text"
                         value={projectName}
@@ -94,11 +94,15 @@ const SaveProjectModal: React.FC<SaveProjectModalProps> = ({
                         }}
                         onKeyDown={handleKeyDown}
                         placeholder="Enter project name"
-                        className="w-full input-glass bg-white focus:outline-none focus:border-[#007AFF] placeholder-[#999]"
+                        className="w-full input-glass focus:outline-none"
+                        style={{
+                            borderColor: 'var(--accent-blue)',
+                            color: 'var(--text-primary)'
+                        }}
                         autoFocus
                     />
                     {error && (
-                        <p className="text-[#FF3B30] text-sm mt-2 font-medium">{error}</p>
+                        <p className="text-sm mt-2 font-medium" style={{ color: 'var(--accent-red)' }}>{error}</p>
                     )}
                 </div>
 

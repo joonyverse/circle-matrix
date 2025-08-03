@@ -28,20 +28,20 @@ const OverwriteConfirmModal: React.FC<OverwriteConfirmModalProps> = ({
         >
             <div className="p-6">
                 <div className="flex items-center gap-3 mb-4">
-                    <div className="flex-shrink-0 w-12 h-12 bg-[#FF9500]/10 rounded-full flex items-center justify-center">
-                        <AlertTriangle className="w-6 h-6 text-[#FF9500]" />
+                    <div className="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center" style={{ background: 'var(--accent-orange)' + '20' }}>
+                        <AlertTriangle className="w-6 h-6" style={{ color: 'var(--accent-orange)' }} />
                     </div>
                     <div>
-                        <h3 className="text-lg font-semibold text-[#333]">Project Already Exists</h3>
-                        <p className="text-sm text-[#666]">This will replace the existing project.</p>
+                        <h3 className="text-lg font-semibold" style={{ color: 'var(--text-heading)' }}>Project Already Exists</h3>
+                        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>This will replace the existing project.</p>
                     </div>
                 </div>
 
                 <div className="mb-6">
-                    <p className="text-[#333]">
-                        A project named <span className="font-semibold text-[#007AFF]">"{projectName}"</span> already exists.
+                    <p style={{ color: 'var(--text-primary)' }}>
+                        A project named <span className="font-semibold" style={{ color: 'var(--text-heading)' }}>"{projectName}"</span> already exists.
                     </p>
-                    <p className="text-sm text-[#666] mt-2">
+                    <p className="text-sm mt-2" style={{ color: 'var(--text-secondary)' }}>
                         Do you want to overwrite it? The existing project settings will be replaced.
                     </p>
                 </div>
@@ -49,13 +49,18 @@ const OverwriteConfirmModal: React.FC<OverwriteConfirmModalProps> = ({
                 <div className="flex gap-3">
                     <button
                         onClick={onClose}
-                        className="flex-1 px-4 py-2 rounded-xl glass text-[#007AFF] hover:bg-white/15 smooth-transition font-medium"
+                        className="flex-1 px-4 py-2 rounded-xl glass smooth-transition font-medium"
+                        style={{ color: 'var(--text-heading)' }}
                     >
                         Cancel
                     </button>
                     <button
                         onClick={handleConfirm}
-                        className="flex-1 px-4 py-2 rounded-xl bg-[#007AFF] text-white hover:bg-[#0056CC] smooth-transition font-medium flex items-center justify-center gap-2"
+                        className="flex-1 px-4 py-2 rounded-xl smooth-transition font-medium flex items-center justify-center gap-2"
+                        style={{
+                            background: 'var(--accent-blue)',
+                            color: 'white'
+                        }}
                     >
                         <Save className="w-4 h-4" />
                         Overwrite

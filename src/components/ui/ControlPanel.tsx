@@ -58,7 +58,8 @@ export const Folder: React.FC<FolderProps> = ({ title, children, defaultCollapse
         <div className="glass-weak rounded-xl overflow-hidden">
             <button
                 onClick={handleToggle}
-                className="w-full px-4 py-3 flex items-center justify-between text-left text-[#007AFF] font-medium hover:bg-white/10 smooth-transition"
+                className="w-full px-4 py-3 flex items-center justify-between text-left font-medium hover:bg-white/10 heading-hover smooth-transition"
+                style={{ color: 'var(--text-heading)' }}
             >
                 <div className="flex items-center gap-2">
                     {icon && <span className="text-sm">{icon}</span>}
@@ -74,7 +75,7 @@ export const Folder: React.FC<FolderProps> = ({ title, children, defaultCollapse
                     maxHeight: isCollapsed ? '0px' : `${Math.max(contentHeight, 1)}px`
                 }}
             >
-                <div ref={contentRef} className="px-4 pb-4 space-y-3">
+                <div ref={contentRef} className="px-4 pt-3 pb-4 space-y-3">
                     {children}
                 </div>
             </div>
@@ -323,10 +324,27 @@ export const Select: React.FC<SelectProps> = ({
     resetValue,
     onReset
 }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+
+    // 외부 클릭 시 드롭다운 닫기
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const selectedLabel = options[value] || value;
+
     return (
         <div className="space-y-2">
             <div className="flex items-center justify-between">
-                <label className="text-sm text-[#666] font-medium">{label}</label>
+                <label className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>{label}</label>
                 {onReset && resetValue !== undefined && (
                     <button
                         onClick={onReset}
@@ -337,17 +355,46 @@ export const Select: React.FC<SelectProps> = ({
                     </button>
                 )}
             </div>
-            <select
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-                className="input-glass w-full px-3 py-2 text-sm"
-            >
-                {Object.entries(options).map(([key, label]) => (
-                    <option key={key} value={key}>
-                        {label}
-                    </option>
-                ))}
-            </select>
+            <div className="relative" ref={dropdownRef}>
+                <button
+                    type="button"
+                    onClick={() => setIsOpen(!isOpen)}
+                    className="input-glass w-full text-sm pr-8 text-left flex items-center justify-between smooth-transition hover:bg-white/10"
+                    style={{ color: 'var(--text-primary)' }}
+                >
+                    <span className="truncate">{selectedLabel}</span>
+                    <svg
+                        className={`w-4 h-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                    >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
+
+                {isOpen && (
+                    <div className="absolute z-50 w-full mt-1 rounded-xl shadow-2xl max-h-48 overflow-y-auto custom-dropdown-enter" style={{
+                        background: 'var(--dropdown-bg)',
+                        border: '1px solid var(--dropdown-border)'
+                    }}>
+                        {Object.entries(options).map(([key, optionLabel]) => (
+                            <button
+                                key={key}
+                                type="button"
+                                onClick={() => {
+                                    onChange(key);
+                                    setIsOpen(false);
+                                }}
+                                className={`w-full px-3 py-2 text-sm text-left smooth-transition ${key === value ? 'bg-[#007AFF] text-white' : 'hover:bg-gray-100'}`}
+                                style={{ color: key === value ? 'white' : 'var(--text-primary)' }}
+                            >
+                                {optionLabel}
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </div>
         </div>
     );
 };
@@ -579,11 +626,11 @@ export const Button: React.FC<ButtonProps> = ({
     size = 'md',
     icon
 }) => {
-    const baseClasses = "font-medium rounded-lg smooth-transition focus:outline-none focus:ring-2 focus:ring-offset-2 flex items-center gap-2";
+    const baseClasses = "font-medium rounded-lg smooth-transition focus:outline-none focus:ring-2 focus:ring-offset-2 flex items-center gap-2 quick-action-hover";
 
     const variantClasses = {
         primary: "bg-[#007AFF] text-white hover:bg-[#0056CC] focus:ring-[#007AFF]",
-        secondary: "glass-weak text-[#007AFF] hover:bg-white/20 focus:ring-[#007AFF] border border-white/20",
+        secondary: "focus:ring-[#007AFF] border",
         danger: "bg-[#FF3B30] text-white hover:bg-[#D70015] focus:ring-[#FF3B30]"
     };
 
@@ -597,6 +644,11 @@ export const Button: React.FC<ButtonProps> = ({
         <button
             onClick={onClick}
             className={`${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]} whitespace-nowrap overflow-hidden text-ellipsis`}
+            style={variant === 'secondary' ? {
+                color: 'var(--text-heading)',
+                background: 'var(--quick-action-bg)',
+                borderColor: 'var(--glass-border)'
+            } : undefined}
         >
             {icon && <span className="text-sm flex-shrink-0">{icon}</span>}
             <span className="truncate">{label}</span>
@@ -639,7 +691,8 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
             {/* Toggle Button - 항상 표시 */}
             <button
                 onClick={onToggleVisibility}
-                className={`fixed top-4 right-4 z-30 p-3 rounded-2xl glass-strong text-[#007AFF] hover:text-[#0056CC] hover:scale-105 control-panel-toggle ${isVisible ? 'opacity-0 pointer-events-none scale-95' : 'opacity-100 scale-100'}`}
+                className={`fixed top-4 right-4 z-30 p-3 rounded-2xl glass-strong hover:scale-105 heading-hover control-panel-toggle ${isVisible ? 'opacity-0 pointer-events-none scale-95' : 'opacity-100 scale-100'}`}
+                style={{ color: 'var(--text-heading)' }}
                 title={isVisible ? "Hide Control Panel" : "Show Control Panel"}
             >
                 <Palette className="w-6 h-6" />
@@ -650,14 +703,15 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                 <div className="p-4 space-y-4">
                     {/* 헤더 */}
                     <div className="flex items-center justify-between pb-3 border-b border-white/20">
-                        <h2 className="text-lg font-semibold text-[#007AFF] flex items-center gap-2">
+                        <h2 className="text-lg font-semibold flex items-center gap-2" style={{ color: 'var(--text-heading)' }}>
                             <Palette className="w-5 h-5" />
                             Control Panel
                         </h2>
                         <div className="flex gap-2">
                             <button
                                 onClick={onToggleVisibility}
-                                className="text-[#007AFF] hover:text-[#0056CC] smooth-transition p-2 rounded-xl hover:bg-white/10"
+                                className="smooth-transition p-2 rounded-xl hover:bg-white/10"
+                                style={{ color: 'var(--text-heading)' }}
                                 title="Hide Control Panel"
                             >
                                 <ChevronRight className="w-4 h-4" />
@@ -667,7 +721,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
 
                     {/* Quick Actions */}
                     <div className="space-y-2">
-                        <h3 className="text-sm font-medium text-[#007AFF]">Quick Actions</h3>
+                        <h3 className="text-sm font-medium" style={{ color: 'var(--text-heading)' }}>Quick Actions</h3>
                         <div className="grid grid-cols-2 gap-2">
                             <Button
                                 label="Reset All"
