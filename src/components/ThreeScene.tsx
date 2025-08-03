@@ -974,14 +974,46 @@ const ThreeScene: React.FC = () => {
       strokeMesh.position.z = 0.001; // z-fighting 방지를 위해 약간의 오프셋을 적용합니다.
       group.add(strokeMesh);
 
-      group.position.set(circle.position.x, circle.position.y, circle.position.z);
       // 원래 위치를 userData에 저장
       group.userData.originalPosition = { x: circle.position.x, y: circle.position.y, z: circle.position.z };
+      group.position.set(circle.position.x, circle.position.y, circle.position.z);
+      
       sceneRef.current!.add(group);
       circle.mesh = group;
     });
 
     circlesRef.current = circles;
+    
+    // circles 생성 직후 transform 즉시 적용 (깜빡임 방지)
+    applyCylindricalTransform(
+      circles,
+      settings.cylinderCurvature,
+      settings.cylinderRadius,
+      getConfig(),
+      settings.cylinderAxis,
+      settings.rotationY
+    );
+
+    // Object transform 적용
+    circles.forEach(circle => {
+      if (!circle.mesh) return;
+
+      // 원래 위치에서 오프셋 적용 (cylindrical transform 후)
+      const currentPos = circle.mesh.position;
+      circle.mesh.position.set(
+        currentPos.x + settings.objectPositionX,
+        currentPos.y + settings.objectPositionY,
+        currentPos.z + settings.objectPositionZ
+      );
+
+      // 통합된 rotation 적용 (cylindrical transform의 rotation은 유지)
+      const currentRotation = circle.mesh.rotation;
+      circle.mesh.rotation.set(
+        settings.rotationX,
+        currentRotation.y, // cylindrical transform에서 설정한 rotationY 유지
+        settings.rotationZ
+      );
+    });
   }, [settings, getConfig, rgbToCss]);
 
   const updateColors = useCallback(() => {

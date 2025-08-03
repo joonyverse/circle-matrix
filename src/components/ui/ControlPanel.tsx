@@ -393,7 +393,7 @@ export const Select: React.FC<SelectProps> = ({
                                         }
                                     }}
                                     className={`w-full px-3 py-2 text-sm text-left smooth-transition ${key === value ? 'bg-[#007AFF] text-white' :
-                                            isDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'
+                                        isDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'
                                         }`}
                                     style={{
                                         color: key === value ? 'white' :
