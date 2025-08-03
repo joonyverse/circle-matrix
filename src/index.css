@@ -1,3 +1,616 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Liquid Glass Design System */
+:root {
+    /* Light Theme Colors */
+    --glass-bg: rgba(255, 255, 255, 0.1);
+    --glass-border: rgba(255, 255, 255, 0.2);
+    --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    --glass-backdrop: blur(20px);
+
+    /* Text Colors */
+    --text-primary: rgba(0, 0, 0, 0.9);
+    --text-secondary: rgba(0, 0, 0, 0.7);
+    --text-tertiary: rgba(0, 0, 0, 0.5);
+
+    /* Accent Colors */
+    --accent-blue: #007AFF;
+    --accent-green: #34C759;
+    --accent-orange: #FF9500;
+    --accent-red: #FF3B30;
+    --accent-purple: #AF52DE;
+
+    /* Background Gradients */
+    --bg-gradient-1: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    --bg-gradient-2: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --bg-gradient-3: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+
+    /* Shadows */
+    --shadow-soft: 0 2px 20px rgba(0, 0, 0, 0.08);
+    --shadow-medium: 0 4px 30px rgba(0, 0, 0, 0.12);
+    --shadow-strong: 0 8px 40px rgba(0, 0, 0, 0.16);
+}
+
+/* Global Styles */
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+        'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+        sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background: var(--bg-gradient-1);
+    color: var(--text-primary);
+    overflow: hidden;
+}
+
+/* Liquid Glass Components */
+.glass {
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-backdrop);
+    -webkit-backdrop-filter: var(--glass-backdrop);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+}
+
+.glass-strong {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(30px);
+    -webkit-backdrop-filter: blur(30px);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    box-shadow: var(--shadow-strong);
+}
+
+.glass-weak {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: var(--shadow-soft);
+}
+
+/* Smooth Transitions */
+.smooth-transition {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.smooth-transition-fast {
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.5);
+}
+
+/* Focus States */
+.focus-ring {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.3);
+}
+
+/* Button Styles */
+.btn-primary {
+    @apply glass smooth-transition px-4 py-2 rounded-xl text-sm font-medium;
+    background: rgba(0, 122, 255, 0.1);
+    border: 1px solid rgba(0, 122, 255, 0.2);
+    color: var(--accent-blue);
+}
+
+.btn-primary:hover {
+    background: rgba(0, 122, 255, 0.15);
+    border-color: rgba(0, 122, 255, 0.3);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-medium);
+}
+
+.btn-secondary {
+    @apply glass smooth-transition px-4 py-2 rounded-xl text-sm font-medium;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: var(--text-secondary);
+}
+
+.btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.3);
+    transform: translateY(-1px);
+}
+
+/* Input Styles */
+.input-glass {
+    @apply glass smooth-transition px-3 py-2 rounded-xl text-sm;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: var(--text-primary);
+}
+
+.input-glass:focus {
+    @apply focus-ring;
+    background: rgba(255, 255, 255, 0.15);
+    border-color: var(--accent-blue);
+}
+
+.input-glass::placeholder {
+    color: var(--text-tertiary);
+}
+
+/* Animation Classes */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(-100%);
+    }
+
+    to {
+        transform: translateX(0);
+    }
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.7;
+    }
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.3s ease-out;
+}
+
+.animate-slide-in {
+    animation: slideIn 0.3s ease-out;
+}
+
+.animate-pulse {
+    animation: pulse 2s infinite;
+}
+
+/* Hide Scrollbar */
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    /* Internet Explorer 10+ */
+    scrollbar-width: none;
+    /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+    /* Safari and Chrome */
+}
+
+/* Leva UI Customization for Liquid Glass */
+.leva-c-kWgxhW {
+    background: rgba(255, 255, 255, 0.1) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1) !important;
+    border-radius: 16px !important;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif !important;
+}
+
+.leva-c-kWgxhW * {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif !important;
+}
+
+/* Leva Header */
+.leva-c-kWgxhW .leva-c-bOcJuF {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2) !important;
+    color: #007AFF !important;
+    font-weight: 600 !important;
+}
+
+/* Leva Folders */
+.leva-c-kWgxhW .leva-c-dmdjqj {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 12px !important;
+    margin: 4px 0 !important;
+}
+
+.leva-c-kWgxhW .leva-c-dmdjqj:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Leva Folder Headers */
+.leva-c-kWgxhW .leva-c-dmdjqj .leva-c-bOcJuF {
+    background: transparent !important;
+    border-bottom: none !important;
+    color: #007AFF !important;
+    font-weight: 500 !important;
+}
+
+/* Leva Inputs */
+.leva-c-kWgxhW input,
+.leva-c-kWgxhW select {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    border-radius: 8px !important;
+    color: rgba(0, 0, 0, 0.9) !important;
+    font-size: 12px !important;
+}
+
+.leva-c-kWgxhW input:focus,
+.leva-c-kWgxhW select:focus {
+    border-color: #007AFF !important;
+    box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.3) !important;
+}
+
+/* Leva Buttons */
+.leva-c-kWgxhW button {
+    background: rgba(0, 122, 255, 0.1) !important;
+    border: 1px solid rgba(0, 122, 255, 0.2) !important;
+    border-radius: 8px !important;
+    color: #007AFF !important;
+    font-weight: 500 !important;
+    transition: all 0.2s ease !important;
+}
+
+.leva-c-kWgxhW button:hover {
+    background: rgba(0, 122, 255, 0.15) !important;
+    border-color: rgba(0, 122, 255, 0.3) !important;
+    transform: translateY(-1px) !important;
+}
+
+/* Leva Labels */
+.leva-c-kWgxhW label {
+    color: rgba(0, 0, 0, 0.7) !important;
+    font-weight: 500 !important;
+}
+
+/* Leva Color Picker */
+.leva-c-kWgxhW .leva-c-gvGqjF {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    border-radius: 8px !important;
+}
+
+/* Leva Sliders */
+.leva-c-kWgxhW .leva-c-jYwTyz {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-radius: 4px !important;
+}
+
+.leva-c-kWgxhW .leva-c-jYwTyz .leva-c-bOcJuF {
+    background: #007AFF !important;
+    border-radius: 4px !important;
+}
+
+/* Leva Toggle */
+.leva-c-kWgxhW .leva-c-gvGqjF[data-leva-toggle] {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    border-radius: 12px !important;
+}
+
+.leva-c-kWgxhW .leva-c-gvGqjF[data-leva-toggle][data-leva-toggle-checked="true"] {
+    background: rgba(0, 122, 255, 0.2) !important;
+    border-color: #007AFF !important;
+}
+
+/* Leva Number Inputs */
+.leva-c-kWgxhW .leva-c-gvGqjF input {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    border-radius: 6px !important;
+    color: rgba(0, 0, 0, 0.9) !important;
+}
+
+/* Leva Select Dropdowns */
+.leva-c-kWgxhW .leva-c-gvGqjF select {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    border-radius: 6px !important;
+    color: rgba(0, 0, 0, 0.9) !important;
+}
+
+/* Leva Row Spacing */
+.leva-c-kWgxhW .leva-c-dmdjqj>div {
+    padding: 8px 12px !important;
+}
+
+/* Leva Folder Content */
+.leva-c-kWgxhW .leva-c-dmdjqj>div>div {
+    padding: 8px 0 !important;
+}
+
+/* Leva Button Groups */
+.leva-c-kWgxhW .leva-c-gvGqjF button {
+    margin: 2px !important;
+    padding: 6px 12px !important;
+    font-size: 11px !important;
+}
+
+/* Leva Color Inputs */
+.leva-c-kWgxhW .leva-c-gvGqjF input[type="color"] {
+    border-radius: 6px !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Leva Text Inputs */
+.leva-c-kWgxhW .leva-c-gvGqjF input[type="text"] {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    border-radius: 6px !important;
+    color: rgba(0, 0, 0, 0.9) !important;
+    padding: 4px 8px !important;
+}
+
+/* Leva Color Picker Specific Styles */
+.leva-c-kWgxhW .leva-c-gvGqjF[data-leva-color] {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    border-radius: 8px !important;
+}
+
+/* Leva Color Picker Swatch */
+.leva-c-kWgxhW .leva-c-gvGqjF[data-leva-color] .leva-c-bOcJuF {
+    border-radius: 6px !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+}
+
+/* Leva Color Picker Input */
+.leva-c-kWgxhW .leva-c-gvGqjF[data-leva-color] input {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    border-radius: 6px !important;
+    color: rgba(0, 0, 0, 0.9) !important;
+}
+
+/* Leva Color Picker Popup */
+.leva-c-kWgxhW .leva-c-gvGqjF[data-leva-color] .leva-c-dmdjqj {
+    background: rgba(255, 255, 255, 0.95) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Leva Color Picker Hue Slider */
+.leva-c-kWgxhW .leva-c-gvGqjF[data-leva-color] .leva-c-jYwTyz {
+    background: linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000) !important;
+    border-radius: 4px !important;
+    height: 8px !important;
+}
+
+/* Leva Color Picker Alpha Slider */
+.leva-c-kWgxhW .leva-c-gvGqjF[data-leva-color] .leva-c-jYwTyz[data-leva-alpha] {
+    background: linear-gradient(to right, transparent, rgba(0, 0, 0, 0.5)) !important;
+    border-radius: 4px !important;
+    height: 8px !important;
+}
+
+/* Leva Color Picker Saturation/Value Area */
+.leva-c-kWgxhW .leva-c-gvGqjF[data-leva-color] .leva-c-dmdjqj[data-leva-sv] {
+    border-radius: 8px !important;
+    overflow: hidden !important;
+}
+
+/* Leva Color Picker Input Fields */
+.leva-c-kWgxhW .leva-c-gvGqjF[data-leva-color] input[type="number"] {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    border-radius: 4px !important;
+    color: rgba(0, 0, 0, 0.9) !important;
+    font-size: 11px !important;
+    padding: 2px 4px !important;
+    width: 40px !important;
+}
+
+/* Leva Color Picker Labels */
+.leva-c-kWgxhW .leva-c-gvGqjF[data-leva-color] label {
+    color: rgba(0, 0, 0, 0.7) !important;
+    font-size: 11px !important;
+    font-weight: 500 !important;
+}
+
+/* Leva Color Picker Hex Input */
+.leva-c-kWgxhW .leva-c-gvGqjF[data-leva-color] input[type="text"] {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    border-radius: 4px !important;
+    color: rgba(0, 0, 0, 0.9) !important;
+    font-size: 11px !important;
+    padding: 2px 4px !important;
+    width: 60px !important;
+}
+
+/* Leva Color Picker Preset Colors */
+.leva-c-kWgxhW .leva-c-gvGqjF[data-leva-color] .leva-c-dmdjqj[data-leva-presets] {
+    background: transparent !important;
+    border: none !important;
+}
+
+.leva-c-kWgxhW .leva-c-gvGqjF[data-leva-color] .leva-c-dmdjqj[data-leva-presets] button {
+    border-radius: 4px !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    margin: 1px !important;
+    width: 16px !important;
+    height: 16px !important;
+}
+
+/* Leva Folder Collapse/Expand Icons */
+.leva-c-kWgxhW .leva-c-dmdjqj .leva-c-bOcJuF svg {
+    color: #007AFF !important;
+    transition: transform 0.2s ease !important;
+}
+
+.leva-c-kWgxhW .leva-c-dmdjqj[data-leva-collapsed="true"] .leva-c-bOcJuF svg {
+    transform: rotate(-90deg) !important;
+}
+
+/* Leva Value Display */
+.leva-c-kWgxhW .leva-c-gvGqjF .leva-c-bOcJuF {
+    color: rgba(0, 0, 0, 0.7) !important;
+    font-size: 11px !important;
+    font-weight: 500 !important;
+}
+
+/* Leva Boolean Toggle */
+.leva-c-kWgxhW .leva-c-gvGqjF[data-leva-boolean] {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    border-radius: 12px !important;
+}
+
+.leva-c-kWgxhW .leva-c-gvGqjF[data-leva-boolean][data-leva-boolean-checked="true"] {
+    background: rgba(0, 122, 255, 0.2) !important;
+    border-color: #007AFF !important;
+}
+
+.leva-c-kWgxhW .leva-c-gvGqjF[data-leva-boolean] .leva-c-bOcJuF {
+    background: rgba(255, 255, 255, 0.8) !important;
+    border-radius: 50% !important;
+    transition: transform 0.2s ease !important;
+}
+
+.leva-c-kWgxhW .leva-c-gvGqjF[data-leva-boolean][data-leva-boolean-checked="true"] .leva-c-bOcJuF {
+    background: #007AFF !important;
+    transform: translateX(16px) !important;
+}
+
+/* Leva Select Dropdown Arrow */
+.leva-c-kWgxhW .leva-c-gvGqjF select {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23007AFF' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e") !important;
+    background-position: right 4px center !important;
+    background-repeat: no-repeat !important;
+    background-size: 16px !important;
+    padding-right: 24px !important;
+}
+
+/* Leva Number Input Arrows */
+.leva-c-kWgxhW .leva-c-gvGqjF input[type="number"]::-webkit-inner-spin-button,
+.leva-c-kWgxhW .leva-c-gvGqjF input[type="number"]::-webkit-outer-spin-button {
+    background: rgba(0, 122, 255, 0.1) !important;
+    border-radius: 4px !important;
+    color: #007AFF !important;
+}
+
+/* Leva Folder Background on Hover */
+.leva-c-kWgxhW .leva-c-dmdjqj:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+    transform: translateY(-1px) !important;
+    transition: all 0.2s ease !important;
+}
+
+/* Leva Input Focus States */
+.leva-c-kWgxhW .leva-c-gvGqjF input:focus,
+.leva-c-kWgxhW .leva-c-gvGqjF select:focus {
+    border-color: #007AFF !important;
+    box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.2) !important;
+    outline: none !important;
+}
+
+/* Leva Button Hover Effects */
+.leva-c-kWgxhW .leva-c-gvGqjF button:hover {
+    background: rgba(0, 122, 255, 0.15) !important;
+    border-color: rgba(0, 122, 255, 0.3) !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 2px 8px rgba(0, 122, 255, 0.2) !important;
+}
+
+/* Custom Slider Styles */
+.slider {
+    -webkit-appearance: none;
+    appearance: none;
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    outline: none;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.slider:hover {
+    background: rgba(0, 0, 0, 0.15);
+}
+
+.slider:focus {
+    box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.2);
+}
+
+.slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #007AFF, #0056CC);
+    cursor: pointer;
+    border: 3px solid rgba(255, 255, 255, 0.9);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
+}
+
+.slider::-webkit-slider-thumb:hover {
+    background: linear-gradient(135deg, #0056CC, #004499);
+    transform: scale(1.15);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(0, 0, 0, 0.1);
+}
+
+.slider::-webkit-slider-thumb:active {
+    background: linear-gradient(135deg, #004499, #003366);
+    transform: scale(1.1);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(0, 0, 0, 0.1);
+}
+
+.slider::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #007AFF, #0056CC);
+    cursor: pointer;
+    border: 3px solid rgba(255, 255, 255, 0.9);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
+}
+
+.slider::-moz-range-thumb:hover {
+    background: linear-gradient(135deg, #0056CC, #004499);
+    transform: scale(1.15);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(0, 0, 0, 0.1);
+}
+
+.slider::-moz-range-thumb:active {
+    background: linear-gradient(135deg, #004499, #003366);
+    transform: scale(1.1);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(0, 0, 0, 0.1);
+}

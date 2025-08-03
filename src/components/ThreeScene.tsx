@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as THREE from 'three';
 import { TrackballControls } from 'three-stdlib';
-import { useControls, button, folder } from 'leva';
 import { CircleData, CircleGridConfig, ShapeType } from '../types';
 import {
   createShapeGeometry,
@@ -12,6 +11,9 @@ import {
 } from '../utils/circleGeometry';
 import ProjectManager from './ProjectManager';
 import SaveProjectModal from './SaveProjectModal';
+import { ControlPanel } from './ui/ControlPanel';
+import { Modal } from './ui/Modal';
+// leva 관련 import 및 코드 제거 완료
 
 interface Project {
   name: string;
@@ -32,6 +34,8 @@ const ThreeScene: React.FC = () => {
   const [forceUpdate, setForceUpdate] = useState(0);
   const [activeProject, setActiveProject] = useState<string | null>(null);
   const [showSaveModal, setShowSaveModal] = useState(false);
+  const [showProjectDetails, setShowProjectDetails] = useState(false);
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
 
   // localStorage 키
   const STORAGE_KEY = 'circle-matrix-settings';
@@ -66,20 +70,20 @@ const ThreeScene: React.FC = () => {
     rotationY: 0,
     rotationZ: 0,
 
-    // Appearance
-    backgroundColor: '#1a1a2e',
+    // Appearance - Light theme colors
+    backgroundColor: '#f5f7fa',
     frequency1: 1,
     syncColors1: false,
-    fill1: { r: 255, g: 107, b: 107, a: 1.0 },
-    stroke1: { r: 255, g: 82, b: 82, a: 1.0 },
+    fill1: { r: 0, g: 122, b: 255, a: 0.8 },
+    stroke1: { r: 0, g: 122, b: 255, a: 1.0 },
     frequency2: 1,
     syncColors2: false,
-    fill2: { r: 78, g: 205, b: 196, a: 1.0 },
-    stroke2: { r: 38, g: 166, b: 154, a: 1.0 },
+    fill2: { r: 52, g: 199, b: 89, a: 0.8 },
+    stroke2: { r: 52, g: 199, b: 89, a: 1.0 },
     frequency3: 1,
     syncColors3: false,
-    fill3: { r: 69, g: 183, b: 209, a: 1.0 },
-    stroke3: { r: 33, g: 150, b: 243, a: 1.0 },
+    fill3: { r: 175, g: 82, b: 222, a: 0.8 },
+    stroke3: { r: 175, g: 82, b: 222, a: 1.0 },
 
     // Camera (only position, settings use default values)
     cameraPositionX: 0,
@@ -87,17 +91,7 @@ const ThreeScene: React.FC = () => {
     cameraPositionZ: 15
   };
 
-  // 카메라 설정 기본값 (UI에서 제거됨)
-  const cameraDefaults = {
-    cameraMinDistance: 5,
-    cameraMaxDistance: 50,
-    cameraEnablePan: true,
-    rotateSpeed: 2.0,
-    zoomSpeed: 1.5,
-    panSpeed: 1.5,
-    dynamicDampingFactor: 0.1
-  };
-
+  // localStorage에서 설정 로드하는 함수
   const getDefaultValues = () => {
     // localStorage에서 저장된 값이 있으면 로드
     try {
@@ -120,261 +114,127 @@ const ThreeScene: React.FC = () => {
     return defaultSettings;
   };
 
+  // 설정 상태 관리
+  const [settings, setSettings] = useState(getDefaultValues);
+  const [showControlPanel, setShowControlPanel] = useState(true);
 
-
-
-
-
-
-  // Leva 컨트롤의 특정 값을 리셋하는 함수
-  const resetLevaValues = (valuesToReset: { [key: string]: any }) => {
-    set(valuesToReset);
+  // 카메라 설정 기본값 (UI에서 제거됨)
+  const cameraDefaults = {
+    cameraMinDistance: 5,
+    cameraMaxDistance: 50,
+    cameraEnablePan: true,
+    rotateSpeed: 2.0,
+    zoomSpeed: 1.5,
+    panSpeed: 1.5,
+    dynamicDampingFactor: 0.1
   };
 
-  const initialValues = getDefaultValues();
 
-  // Leva 컨트롤 정의
-  const [controls, set] = useControls(() => ({
-    // ⚙️ Quick Actions
-    'Reset All': button(() => {
-      // 실제로 Leva UI에 존재하는 컨트롤들만 리셋
-      resetLevaValues({
-        rows: defaultSettings.rows,
-        cols: defaultSettings.cols,
-        rowSpacing: defaultSettings.rowSpacing,
-        colSpacing: defaultSettings.colSpacing,
-        shapeType: defaultSettings.shapeType,
-        circleRadius: defaultSettings.circleRadius,
-        rectangleWidth: defaultSettings.rectangleWidth,
-        rectangleHeight: defaultSettings.rectangleHeight,
-        enableWidthScaling: defaultSettings.enableWidthScaling,
-        widthScaleFactor: defaultSettings.widthScaleFactor,
-        borderThickness: defaultSettings.borderThickness,
-        cylinderAxis: defaultSettings.cylinderAxis,
-        cylinderCurvature: defaultSettings.cylinderCurvature,
-        cylinderRadius: defaultSettings.cylinderRadius,
-        objectPositionX: defaultSettings.objectPositionX,
-        objectPositionY: defaultSettings.objectPositionY,
-        objectPositionZ: defaultSettings.objectPositionZ,
-        rotationX: defaultSettings.rotationX,
-        rotationY: defaultSettings.rotationY,
-        rotationZ: defaultSettings.rotationZ,
-        backgroundColor: defaultSettings.backgroundColor,
-        frequency1: defaultSettings.frequency1,
-        syncColors1: defaultSettings.syncColors1,
-        fill1: defaultSettings.fill1,
-        stroke1: defaultSettings.stroke1,
-        frequency2: defaultSettings.frequency2,
-        syncColors2: defaultSettings.syncColors2,
-        fill2: defaultSettings.fill2,
-        stroke2: defaultSettings.stroke2,
-        frequency3: defaultSettings.frequency3,
-        syncColors3: defaultSettings.syncColors3,
-        fill3: defaultSettings.fill3,
-        stroke3: defaultSettings.stroke3,
-        cameraPositionX: defaultSettings.cameraPositionX,
-        cameraPositionY: defaultSettings.cameraPositionY,
-        cameraPositionZ: defaultSettings.cameraPositionZ
+
+
+
+
+
+  // 설정 변경 핸들러
+  const handleSettingChange = useCallback((key: string, value: any) => {
+    setSettings(prev => ({ ...prev, [key]: value }));
+  }, []);
+
+  // 모든 설정 리셋
+  const handleResetAll = useCallback(() => {
+    setSettings(defaultSettings);
+    colorSeedRef.current = Math.floor(Math.random() * 1000000);
+    createCircles();
+    saveSettings();
+  }, []);
+
+  // 카메라 리셋
+  const handleResetCamera = useCallback(() => {
+    resetCameraPosition();
+  }, []);
+
+  // 색상 재생성
+  const handleRegenerateColors = useCallback(() => {
+    colorSeedRef.current = Math.floor(Math.random() * 1000000);
+    createCircles();
+    saveSettings();
+  }, []);
+
+  // URL 공유
+  const handleShareURL = useCallback(async () => {
+    const currentSettings = getCurrentSettings();
+    const projectData = encodeURIComponent(JSON.stringify(currentSettings));
+    const shareURL = `${window.location.origin}${window.location.pathname}?project=${projectData}`;
+
+    try {
+      // TinyURL API를 사용하여 URL 단축
+      const response = await fetch('https://tinyurl.com/api-create.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `url=${encodeURIComponent(shareURL)}`
       });
-      resetCameraPosition();
-      colorSeedRef.current = Math.floor(Math.random() * 1000000);
-      createCircles();
-      saveSettings();
-    }),
-    'Reset Camera': button(() => resetCameraPosition()),
-    'Regenerate Colors': button(() => {
-      colorSeedRef.current = Math.floor(Math.random() * 1000000);
-      createCircles();
-      saveSettings();
-    }),
-    'Share URL': button(() => shareProjectURL()),
 
-    // 📐 Structure
-    Structure: folder({
-      'Grid Layout': folder({
-        'Reset Grid': button(() => {
-          resetLevaValues({
-            rows: defaultSettings.rows,
-            cols: defaultSettings.cols,
-            rowSpacing: defaultSettings.rowSpacing,
-            colSpacing: defaultSettings.colSpacing
-          });
-        }),
-        rows: { value: initialValues.rows, min: 1, max: 50, step: 1 },
-        cols: { value: initialValues.cols, min: 1, max: 100, step: 1 },
-        rowSpacing: { value: initialValues.rowSpacing, min: 0.1, max: 20 },
-        colSpacing: { value: initialValues.colSpacing, min: 0.1, max: 20 }
-      }, { collapsed: false }),
-      'Shape Settings': folder({
-        'Reset Shape': button(() => {
-          resetLevaValues({
-            shapeType: defaultSettings.shapeType,
-            circleRadius: defaultSettings.circleRadius,
-            rectangleWidth: defaultSettings.rectangleWidth,
-            rectangleHeight: defaultSettings.rectangleHeight,
-            enableWidthScaling: defaultSettings.enableWidthScaling,
-            widthScaleFactor: defaultSettings.widthScaleFactor,
-            borderThickness: defaultSettings.borderThickness
-          });
-        }),
-        shapeType: { value: initialValues.shapeType, options: { Circle: ShapeType.Circle, Rectangle: ShapeType.Rectangle } },
-        circleRadius: { value: initialValues.circleRadius, min: 0.1, max: 12 },
-        rectangleWidth: { value: initialValues.rectangleWidth, min: 0.2, max: 12 },
-        rectangleHeight: { value: initialValues.rectangleHeight, min: 0.2, max: 12 },
-        enableWidthScaling: initialValues.enableWidthScaling,
-        widthScaleFactor: { value: initialValues.widthScaleFactor, min: 1.0, max: 10.0 }
-      }, { collapsed: false })
-    }, { collapsed: true }),
+      if (response.ok) {
+        const tinyURL = await response.text();
 
-    // 🔄 Transforms
-    Transforms: folder({
-      'Cylinder Roll': folder({
-        'Reset Cylinder': button(() => {
-          resetLevaValues({
-            cylinderAxis: defaultSettings.cylinderAxis,
-            cylinderCurvature: defaultSettings.cylinderCurvature,
-            cylinderRadius: defaultSettings.cylinderRadius
-          });
-        }),
-        cylinderAxis: { value: initialValues.cylinderAxis, options: { 'Y-Axis (Horizontal)': 'y', 'X-Axis (Vertical)': 'x' } },
-        cylinderCurvature: { value: initialValues.cylinderCurvature, min: 0, max: 1 },
-        cylinderRadius: { value: initialValues.cylinderRadius, min: 2, max: 20 }
-      }, { collapsed: false }),
-      'Object Transform': folder({
-        'Reset Transform': button(() => {
-          resetLevaValues({
-            objectPositionX: defaultSettings.objectPositionX,
-            objectPositionY: defaultSettings.objectPositionY,
-            objectPositionZ: defaultSettings.objectPositionZ,
-            rotationX: defaultSettings.rotationX,
-            rotationY: defaultSettings.rotationY,
-            rotationZ: defaultSettings.rotationZ
-          });
-        }),
-        Position: folder({
-          objectPositionX: { value: initialValues.objectPositionX, min: -20, max: 20 },
-          objectPositionY: { value: initialValues.objectPositionY, min: -20, max: 20 },
-          objectPositionZ: { value: initialValues.objectPositionZ, min: -20, max: 20 }
-        }, { collapsed: false }),
-        Rotation: folder({
-          rotationX: { value: initialValues.rotationX, min: -Math.PI, max: Math.PI },
-          rotationY: { value: initialValues.rotationY, min: -Math.PI, max: Math.PI },
-          rotationZ: { value: initialValues.rotationZ, min: -Math.PI, max: Math.PI }
-        }, { collapsed: false })
-      }, { collapsed: false })
-    }, { collapsed: true }),
-
-    // 🎨 Appearance
-    Appearance: folder({
-      backgroundColor: initialValues.backgroundColor,
-      'Reset Border': button(() => {
-        resetLevaValues({
-          borderThickness: defaultSettings.borderThickness
-        });
-      }),
-      borderThickness: { value: initialValues.borderThickness, min: 0.05, max: 0.5 },
-      'Color Group 1': folder({
-        'Reset Group 1': button(() => {
-          resetLevaValues({
-            frequency1: defaultSettings.frequency1,
-            syncColors1: defaultSettings.syncColors1,
-            fill1: defaultSettings.fill1,
-            stroke1: defaultSettings.stroke1
-          });
-        }),
-        frequency1: { value: initialValues.frequency1, min: 0, max: 5 },
-        syncColors1: initialValues.syncColors1,
-        fill1: initialValues.fill1,
-        stroke1: initialValues.stroke1
-      }, { collapsed: false }),
-      'Color Group 2': folder({
-        'Reset Group 2': button(() => {
-          resetLevaValues({
-            frequency2: defaultSettings.frequency2,
-            syncColors2: defaultSettings.syncColors2,
-            fill2: defaultSettings.fill2,
-            stroke2: defaultSettings.stroke2
-          });
-        }),
-        frequency2: { value: initialValues.frequency2, min: 0, max: 5 },
-        syncColors2: initialValues.syncColors2,
-        fill2: initialValues.fill2,
-        stroke2: initialValues.stroke2
-      }, { collapsed: false }),
-      'Color Group 3': folder({
-        'Reset Group 3': button(() => {
-          resetLevaValues({
-            frequency3: defaultSettings.frequency3,
-            syncColors3: defaultSettings.syncColors3,
-            fill3: defaultSettings.fill3,
-            stroke3: defaultSettings.stroke3
-          });
-        }),
-        frequency3: { value: initialValues.frequency3, min: 0, max: 5 },
-        syncColors3: initialValues.syncColors3,
-        fill3: initialValues.fill3,
-        stroke3: initialValues.stroke3
-      }, { collapsed: false })
-    }, { collapsed: true }),
-
-    // 📹 Camera
-    Camera: folder({
-      'Reset Camera Settings': button(() => {
-        resetLevaValues({
-          cameraPositionX: defaultSettings.cameraPositionX,
-          cameraPositionY: defaultSettings.cameraPositionY,
-          cameraPositionZ: defaultSettings.cameraPositionZ
-        });
-      }),
-      Position: folder({
-        cameraPositionX: { value: initialValues.cameraPositionX, min: -50, max: 50 },
-        cameraPositionY: { value: initialValues.cameraPositionY, min: -50, max: 50 },
-        cameraPositionZ: { value: initialValues.cameraPositionZ, min: -50, max: 50 }
-      }, { collapsed: false }),
-      Settings: folder({
-        // Camera settings removed - using default values only
-      }, { collapsed: false })
-    }, { collapsed: true })
-  }));
+        // 클립보드에 복사
+        await navigator.clipboard.writeText(tinyURL);
+        setMessage('TinyURL copied to clipboard!');
+        setTimeout(() => setMessage(''), 3000);
+      } else {
+        // TinyURL 생성 실패 시 원본 URL 사용
+        await navigator.clipboard.writeText(shareURL);
+        setMessage('Share URL copied to clipboard!');
+        setTimeout(() => setMessage(''), 3000);
+      }
+    } catch (error) {
+      console.warn('Failed to create TinyURL:', error);
+      // 에러 발생 시 원본 URL 사용
+      try {
+        await navigator.clipboard.writeText(shareURL);
+        setMessage('Share URL copied to clipboard!');
+        setTimeout(() => setMessage(''), 3000);
+      } catch (clipboardError) {
+        // 클립보드 복사 실패 시 URL을 alert로 표시
+        alert(`Share URL:\n${shareURL}`);
+      }
+    }
+  }, []);
 
   // 현재 설정을 가져오는 함수 (카메라 위치 제외)
   const getCurrentSettings = useCallback(() => {
-    const { cameraPositionX, cameraPositionY, cameraPositionZ, ...settingsWithoutCamera } = controls;
+    const { cameraPositionX, cameraPositionY, cameraPositionZ, ...settingsWithoutCamera } = settings;
     return {
       ...settingsWithoutCamera,
       colorSeed: colorSeedRef.current
     };
-  }, [controls]);
+  }, [settings]);
 
   // 설정을 적용하는 함수 (카메라 위치 제외)
-  const applySettings = useCallback((settings: Record<string, unknown>) => {
-    console.log('🔧 applySettings called with:', Object.keys(settings));
+  const applySettings = useCallback((newSettings: Record<string, unknown>) => {
+    console.log('🔧 applySettings called with:', Object.keys(newSettings));
     setIsLoadingProject(true);
 
     // 색상 시드 적용
-    if (settings.colorSeed !== undefined) {
-      colorSeedRef.current = settings.colorSeed as number;
+    if (newSettings.colorSeed !== undefined) {
+      colorSeedRef.current = newSettings.colorSeed as number;
     }
 
     // 카메라 위치를 제외한 설정만 localStorage에 저장
-    const { cameraPositionX, cameraPositionY, cameraPositionZ, ...settingsWithoutCamera } = settings;
+    const { cameraPositionX, cameraPositionY, cameraPositionZ, ...settingsWithoutCamera } = newSettings;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settingsWithoutCamera));
 
     // 설정 적용
-    const settingsToApply = Object.keys(settings).filter(key =>
-      key !== 'colorSeed' && settings[key] !== undefined
-    );
-
-    settingsToApply.forEach(key => {
-      set({ [key]: settings[key] });
-    });
+    setSettings(prev => ({ ...prev, ...newSettings }));
 
     // 씬 재생성
     setTimeout(() => {
       setForceUpdate(prev => prev + 1);
       setIsLoadingProject(false);
     }, 500);
-  }, [set]);
+  }, []);
 
   // 프로젝트 로드 후 씬 업데이트를 위한 함수
   const loadProjectAndUpdate = useCallback((name: string) => {
@@ -593,6 +453,12 @@ const ThreeScene: React.FC = () => {
   // 메시지 상태 추가
   const [message, setMessage] = useState('');
 
+  // 프로젝트 상세 모달 핸들러
+  const handleShowProjectDetails = useCallback((project: Project) => {
+    setSelectedProject(project);
+    setShowProjectDetails(true);
+  }, []);
+
   // RGBA 색상을 CSS 색상 문자열로 변환
   const rgbToCss = (rgba: { r: number; g: number; b: number; a: number }) => {
     return `rgb(${rgba.r}, ${rgba.g}, ${rgba.b})`;
@@ -600,40 +466,25 @@ const ThreeScene: React.FC = () => {
 
   // 모든 설정 저장 (카메라 위치 제외)
   const saveSettings = useCallback(() => {
-    const { cameraPositionX, cameraPositionY, cameraPositionZ, ...settingsWithoutCamera } = controls;
-    const settings = {
+    const { cameraPositionX, cameraPositionY, cameraPositionZ, ...settingsWithoutCamera } = settings;
+    const settingsToSave = {
       ...settingsWithoutCamera,
       colorSeed: colorSeedRef.current
     };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-  }, [controls]);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(settingsToSave));
+  }, [settings]);
 
-  // 모든 설정 로드
-  const loadSettings = () => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const settings = JSON.parse(saved);
 
-        // 저장된 색상 시드가 있으면 적용
-        if (settings.colorSeed !== undefined) {
-          colorSeedRef.current = settings.colorSeed;
-        }
-      }
-    } catch (error) {
-      console.warn('Failed to load settings from localStorage:', error);
-    }
-  };
 
   const config: CircleGridConfig = {
-    rows: controls.rows,
-    cols: controls.cols,
-    shapeType: controls.shapeType,
-    circleRadius: controls.circleRadius,
-    rectangleWidth: controls.rectangleWidth,
-    rectangleHeight: controls.rectangleHeight,
-    rowSpacing: controls.rowSpacing,
-    colSpacing: controls.colSpacing
+    rows: settings.rows,
+    cols: settings.cols,
+    shapeType: settings.shapeType,
+    circleRadius: settings.circleRadius,
+    rectangleWidth: settings.rectangleWidth,
+    rectangleHeight: settings.rectangleHeight,
+    rowSpacing: settings.rowSpacing,
+    colSpacing: settings.colSpacing
   };
 
   const initScene = () => {
@@ -647,12 +498,12 @@ const ThreeScene: React.FC = () => {
     const renderer = new THREE.WebGLRenderer({ antialias: true });
 
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setClearColor(controls.backgroundColor);
+    renderer.setClearColor(settings.backgroundColor);
 
     camera.position.set(
-      controls.cameraPositionX,
-      controls.cameraPositionY,
-      controls.cameraPositionZ
+      settings.cameraPositionX,
+      settings.cameraPositionY,
+      settings.cameraPositionZ
     );
 
     sceneRef.current = scene;
@@ -689,9 +540,9 @@ const ThreeScene: React.FC = () => {
     // 새로운 도형들 생성
     const circles = generateCirclePositions(config);
     assignColorGroups(circles, [
-      controls.frequency1,
-      controls.frequency2,
-      controls.frequency3
+      settings.frequency1,
+      settings.frequency2,
+      settings.frequency3
     ], colorSeedRef.current);
 
     circles.forEach(circle => {
@@ -701,44 +552,44 @@ const ThreeScene: React.FC = () => {
       const fillGeometry = createShapeGeometry(
         config,
         circle.columnIndex,
-        controls.enableWidthScaling,
-        controls.widthScaleFactor
+        settings.enableWidthScaling,
+        settings.widthScaleFactor
       );
 
       const strokeGeometry = createShapeStrokeGeometry(
         config,
-        controls.borderThickness,
+        settings.borderThickness,
         circle.columnIndex,
-        controls.enableWidthScaling,
-        controls.widthScaleFactor
+        settings.enableWidthScaling,
+        settings.widthScaleFactor
       );
 
       // 색상 그룹에 따른 재료 선택
       let fillColor, strokeColor, fillOpacity, strokeOpacity;
       switch (circle.colorGroup) {
         case 0:
-          fillColor = rgbToCss(controls.fill1);
-          strokeColor = controls.syncColors1 ? rgbToCss(controls.fill1) : rgbToCss(controls.stroke1);
-          fillOpacity = controls.fill1.a;
-          strokeOpacity = controls.stroke1.a;
+          fillColor = rgbToCss(settings.fill1);
+          strokeColor = settings.syncColors1 ? rgbToCss(settings.fill1) : rgbToCss(settings.stroke1);
+          fillOpacity = settings.fill1.a;
+          strokeOpacity = settings.stroke1.a;
           break;
         case 1:
-          fillColor = rgbToCss(controls.fill2);
-          strokeColor = controls.syncColors2 ? rgbToCss(controls.fill2) : rgbToCss(controls.stroke2);
-          fillOpacity = controls.fill2.a;
-          strokeOpacity = controls.stroke2.a;
+          fillColor = rgbToCss(settings.fill2);
+          strokeColor = settings.syncColors2 ? rgbToCss(settings.fill2) : rgbToCss(settings.stroke2);
+          fillOpacity = settings.fill2.a;
+          strokeOpacity = settings.stroke2.a;
           break;
         case 2:
-          fillColor = rgbToCss(controls.fill3);
-          strokeColor = controls.syncColors3 ? rgbToCss(controls.fill3) : rgbToCss(controls.stroke3);
-          fillOpacity = controls.fill3.a;
-          strokeOpacity = controls.stroke3.a;
+          fillColor = rgbToCss(settings.fill3);
+          strokeColor = settings.syncColors3 ? rgbToCss(settings.fill3) : rgbToCss(settings.stroke3);
+          fillOpacity = settings.fill3.a;
+          strokeOpacity = settings.stroke3.a;
           break;
         default:
-          fillColor = rgbToCss(controls.fill1);
-          strokeColor = controls.syncColors1 ? rgbToCss(controls.fill1) : rgbToCss(controls.stroke1);
-          fillOpacity = controls.fill1.a;
-          strokeOpacity = controls.stroke1.a;
+          fillColor = rgbToCss(settings.fill1);
+          strokeColor = settings.syncColors1 ? rgbToCss(settings.fill1) : rgbToCss(settings.stroke1);
+          fillOpacity = settings.fill1.a;
+          strokeOpacity = settings.stroke1.a;
       }
 
       // 채우기
@@ -777,11 +628,11 @@ const ThreeScene: React.FC = () => {
     // Apply cylindrical transform first
     applyCylindricalTransform(
       circlesRef.current,
-      controls.cylinderCurvature,
-      controls.cylinderRadius,
+      settings.cylinderCurvature,
+      settings.cylinderRadius,
       config,
-      controls.cylinderAxis,
-      controls.rotationY
+      settings.cylinderAxis,
+      settings.rotationY
     );
 
     // Then apply object rotations and positions
@@ -791,16 +642,16 @@ const ThreeScene: React.FC = () => {
       // 원래 위치에서 오프셋 적용 (cylindrical transform 후)
       const currentPos = circle.mesh.position;
       circle.mesh.position.set(
-        currentPos.x + controls.objectPositionX,
-        currentPos.y + controls.objectPositionY,
-        currentPos.z + controls.objectPositionZ
+        currentPos.x + settings.objectPositionX,
+        currentPos.y + settings.objectPositionY,
+        currentPos.z + settings.objectPositionZ
       );
 
       // 통합된 rotation 적용
       circle.mesh.rotation.set(
-        controls.rotationX,
-        controls.rotationY,
-        controls.rotationZ
+        settings.rotationX,
+        settings.rotationY,
+        settings.rotationZ
       );
     });
   };
@@ -846,13 +697,13 @@ const ThreeScene: React.FC = () => {
       createCircles();
     }
   }, [
-    controls.rows, controls.cols, controls.rowSpacing, controls.colSpacing,
-    controls.shapeType, controls.circleRadius, controls.rectangleWidth, controls.rectangleHeight,
-    controls.enableWidthScaling, controls.widthScaleFactor, controls.borderThickness,
-    controls.frequency1, controls.frequency2, controls.frequency3,
-    controls.fill1, controls.stroke1, controls.syncColors1,
-    controls.fill2, controls.stroke2, controls.syncColors2,
-    controls.fill3, controls.stroke3, controls.syncColors3
+    settings.rows, settings.cols, settings.rowSpacing, settings.colSpacing,
+    settings.shapeType, settings.circleRadius, settings.rectangleWidth, settings.rectangleHeight,
+    settings.enableWidthScaling, settings.widthScaleFactor, settings.borderThickness,
+    settings.frequency1, settings.frequency2, settings.frequency3,
+    settings.fill1, settings.stroke1, settings.syncColors1,
+    settings.fill2, settings.stroke2, settings.syncColors2,
+    settings.fill3, settings.stroke3, settings.syncColors3
   ]);
 
   useEffect(() => {
@@ -860,16 +711,16 @@ const ThreeScene: React.FC = () => {
       updateTransforms();
     }
   }, [
-    controls.cylinderAxis, controls.cylinderCurvature, controls.cylinderRadius,
-    controls.objectPositionX, controls.objectPositionY, controls.objectPositionZ,
-    controls.rotationX, controls.rotationY, controls.rotationZ
+    settings.cylinderAxis, settings.cylinderCurvature, settings.cylinderRadius,
+    settings.objectPositionX, settings.objectPositionY, settings.objectPositionZ,
+    settings.rotationX, settings.rotationY, settings.rotationZ
   ]);
 
   useEffect(() => {
     if (rendererRef.current) {
-      rendererRef.current.setClearColor(controls.backgroundColor);
+      rendererRef.current.setClearColor(settings.backgroundColor);
     }
-  }, [controls.backgroundColor]);
+  }, [settings.backgroundColor]);
 
 
 
@@ -891,10 +742,10 @@ const ThreeScene: React.FC = () => {
   useEffect(() => {
     if (controlsRef.current && cameraRef.current) {
       const camera = cameraRef.current;
-      camera.position.set(controls.cameraPositionX, controls.cameraPositionY, controls.cameraPositionZ);
+      camera.position.set(settings.cameraPositionX, settings.cameraPositionY, settings.cameraPositionZ);
       controlsRef.current.update();
     }
-  }, [controls.cameraPositionX, controls.cameraPositionY, controls.cameraPositionZ]);
+  }, [settings.cameraPositionX, settings.cameraPositionY, settings.cameraPositionZ]);
 
   // TrackballControls 이벤트 → Leva 값 동기화
   useEffect(() => {
@@ -908,11 +759,8 @@ const ThreeScene: React.FC = () => {
           isUpdating = true;
           requestAnimationFrame(() => {
             // 마우스 드래그/줌/팬으로 카메라가 움직일 때 Leva 값 업데이트
-            set({
-              cameraPositionX: camera.position.x,
-              cameraPositionY: camera.position.y,
-              cameraPositionZ: camera.position.z
-            });
+            setMessage('Camera position updated.');
+            setTimeout(() => setMessage(''), 3000);
             isUpdating = false;
           });
         }
@@ -927,11 +775,9 @@ const ThreeScene: React.FC = () => {
         controls.removeEventListener('update', handleChange);
       };
     }
-  }, [set]);
+  }, [setMessage]);
 
   useEffect(() => {
-    loadSettings();
-
     // URL에서 프로젝트 로드 시도
     const urlLoaded = loadProjectFromURL();
 
@@ -979,6 +825,9 @@ const ThreeScene: React.FC = () => {
         return;
       }
 
+      // 모달이 열려있으면 WASD 키보드 이벤트 무시
+      if (showSaveModal || showProjectManager || showProjectDetails) return;
+
       // WASD 카메라 컨트롤
       if (!controlsRef.current) return;
 
@@ -989,32 +838,38 @@ const ThreeScene: React.FC = () => {
         case 'KeyW':
           camera.position.z -= moveSpeed;
           // Leva 컨트롤 업데이트
-          set({ cameraPositionZ: camera.position.z });
+          setMessage('Camera position updated.');
+          setTimeout(() => setMessage(''), 3000);
           break;
         case 'KeyS':
           camera.position.z += moveSpeed;
           // Leva 컨트롤 업데이트
-          set({ cameraPositionZ: camera.position.z });
+          setMessage('Camera position updated.');
+          setTimeout(() => setMessage(''), 3000);
           break;
         case 'KeyA':
           camera.position.x -= moveSpeed;
           // Leva 컨트롤 업데이트
-          set({ cameraPositionX: camera.position.x });
+          setMessage('Camera position updated.');
+          setTimeout(() => setMessage(''), 3000);
           break;
         case 'KeyD':
           camera.position.x += moveSpeed;
           // Leva 컨트롤 업데이트
-          set({ cameraPositionX: camera.position.x });
+          setMessage('Camera position updated.');
+          setTimeout(() => setMessage(''), 3000);
           break;
         case 'KeyQ':
           camera.position.y += moveSpeed;
           // Leva 컨트롤 업데이트
-          set({ cameraPositionY: camera.position.y });
+          setMessage('Camera position updated.');
+          setTimeout(() => setMessage(''), 3000);
           break;
         case 'KeyE':
           camera.position.y -= moveSpeed;
           // Leva 컨트롤 업데이트
-          set({ cameraPositionY: camera.position.y });
+          setMessage('Camera position updated.');
+          setTimeout(() => setMessage(''), 3000);
           break;
       }
 
@@ -1027,12 +882,12 @@ const ThreeScene: React.FC = () => {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [set, activeProject, saveToActiveProject]);
+  }, [setMessage, activeProject, saveToActiveProject, showSaveModal, showProjectManager, showProjectDetails]);
 
   // Auto-save when controls change
   useEffect(() => {
     saveSettings();
-  }, [controls, saveSettings]);
+  }, [settings, saveSettings]);
 
   // 강제 업데이트 시 씬 재생성
   useEffect(() => {
@@ -1049,17 +904,32 @@ const ThreeScene: React.FC = () => {
     <div className="relative w-full h-screen">
       <div ref={mountRef} className="w-full h-screen" />
 
+      {/* Control Panel */}
+      <ControlPanel
+        settings={settings}
+        onSettingChange={handleSettingChange}
+        onResetAll={handleResetAll}
+        onResetCamera={handleResetCamera}
+        onRegenerateColors={handleRegenerateColors}
+        onShareURL={handleShareURL}
+        isVisible={showControlPanel}
+        onToggleVisibility={() => setShowControlPanel(v => !v)}
+      />
+
       {/* Message Display */}
       {message && (
-        <div className="absolute top-4 right-4 z-20 bg-[#2a2a2a] text-[#4ade80] px-4 py-2 rounded-lg shadow-lg border border-[#3a3a3a] font-mono text-sm">
-          {message}
+        <div className="absolute top-4 right-4 z-20 glass-strong text-[#34C759] px-4 py-3 rounded-2xl shadow-lg font-medium text-sm animate-fade-in">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-[#34C759] rounded-full animate-pulse"></div>
+            {message}
+          </div>
         </div>
       )}
 
       {/* Loading Indicator */}
       {isLoadingProject && (
-        <div className="absolute top-4 right-4 z-20 bg-[#2a2a2a] text-[#60a5fa] px-4 py-2 rounded-lg shadow-lg border border-[#3a3a3a] font-mono text-sm flex items-center gap-2">
-          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#60a5fa]"></div>
+        <div className="absolute top-4 right-4 z-20 glass-strong text-[#007AFF] px-4 py-3 rounded-2xl shadow-lg font-medium text-sm flex items-center gap-3 animate-fade-in">
+          <div className="animate-spin rounded-full h-4 w-4 border-2 border-[#007AFF] border-t-transparent"></div>
           Loading project settings...
         </div>
       )}
@@ -1077,6 +947,7 @@ const ThreeScene: React.FC = () => {
           onSaveToActiveProject={saveToActiveProject}
           onOpenSaveModal={() => setShowSaveModal(true)}
           onClose={() => setShowProjectManager(false)}
+          onShowProjectDetails={handleShowProjectDetails}
           onShareProject={async (settings) => {
             const projectData = encodeURIComponent(JSON.stringify(settings));
             const shareURL = `${window.location.origin}${window.location.pathname}?project=${projectData}`;
@@ -1123,31 +994,31 @@ const ThreeScene: React.FC = () => {
       {/* Toggle Button */}
       <button
         onClick={() => setShowProjectManager(!showProjectManager)}
-        className={`fixed top-4 left-4 z-20 p-2 rounded-lg transition-all duration-300 ${showProjectManager
+        className={`fixed top-4 left-4 z-20 p-3 rounded-2xl smooth-transition ${showProjectManager
           ? 'opacity-0 pointer-events-none'
-          : 'bg-[#1a1a1a] text-[#888] hover:text-[#e0e0e0] hover:bg-[#2a2a2a]'
+          : 'glass-strong text-[#007AFF] hover:text-[#0056CC] hover:scale-105'
           }`}
         title="Open Project Manager"
       >
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
         </svg>
       </button>
 
       {/* Camera Controls Guide */}
-      <div className="fixed bottom-4 left-4 z-20 bg-[#1a1a1a] text-[#888] px-3 py-2 rounded-lg shadow-lg border border-[#3a3a3a] font-mono text-xs">
-        <div className="flex items-center gap-4">
-          <div>
-            <span className="text-[#60a5fa]">WASD:</span> Move Camera
+      <div className="fixed bottom-4 left-4 z-20 glass-strong text-[#007AFF] px-4 py-3 rounded-2xl shadow-lg font-medium text-sm">
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-[#FF9500]">WASD:</span> <span className="text-[#666]">Move Camera</span>
           </div>
-          <div>
-            <span className="text-[#60a5fa]">QE:</span> Up/Down
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-[#FF9500]">QE:</span> <span className="text-[#666]">Up/Down</span>
           </div>
-          <div>
-            <span className="text-[#60a5fa]">Mouse:</span> Rotate/Zoom
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-[#FF9500]">Mouse:</span> <span className="text-[#666]">Rotate/Zoom</span>
           </div>
-          <div>
-            <span className="text-[#4ade80]">Ctrl+S:</span> Save
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-[#34C759]">Ctrl+S:</span> <span className="text-[#666]">Save</span>
           </div>
         </div>
       </div>
@@ -1159,6 +1030,87 @@ const ThreeScene: React.FC = () => {
         onSave={handleSaveNewProject}
         existingProjects={getExistingProjectNames()}
       />
+
+      {/* Project Details Modal */}
+      {showProjectDetails && selectedProject && (
+        <Modal
+          isOpen={showProjectDetails}
+          onClose={() => setShowProjectDetails(false)}
+          title="Project Details"
+        >
+          <div className="p-4 max-h-96 overflow-y-auto">
+            <div className="mb-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-[#007AFF] font-semibold mb-1">{selectedProject.name}</h3>
+                  <p className="text-xs text-[#666]">Saved: {new Date(selectedProject.timestamp).toLocaleString('en-US')}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <h4 className="text-[#007AFF] text-sm font-medium">Settings Preview:</h4>
+
+              {/* Structure Settings */}
+              <div className="glass-weak p-3 rounded-xl">
+                <h5 className="text-[#007AFF] text-xs font-medium mb-2">Structure</h5>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <span className="text-[#666]">Rows:</span>
+                  <span className="text-[#007AFF] font-medium">{String(selectedProject.settings.rows)}</span>
+                  <span className="text-[#666]">Cols:</span>
+                  <span className="text-[#007AFF] font-medium">{String(selectedProject.settings.cols)}</span>
+                  <span className="text-[#666]">Shape Type:</span>
+                  <span className="text-[#007AFF] font-medium">{String(selectedProject.settings.shapeType)}</span>
+                </div>
+              </div>
+
+              {/* Appearance Settings */}
+              <div className="glass-weak p-3 rounded-xl">
+                <h5 className="text-[#007AFF] text-xs font-medium mb-2">Appearance</h5>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <span className="text-[#666]">Background:</span>
+                  <span className="text-[#007AFF] font-medium">{String(selectedProject.settings.backgroundColor)}</span>
+                  <span className="text-[#666]">Border:</span>
+                  <span className="text-[#007AFF] font-medium">{String(selectedProject.settings.borderThickness)}</span>
+                </div>
+              </div>
+
+              {/* Transform Settings */}
+              <div className="glass-weak p-3 rounded-xl">
+                <h5 className="text-[#007AFF] text-xs font-medium mb-2">Transform</h5>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <span className="text-[#666]">Cylinder Radius:</span>
+                  <span className="text-[#007AFF] font-medium">{String(selectedProject.settings.cylinderRadius)}</span>
+                  <span className="text-[#666]">Curvature:</span>
+                  <span className="text-[#007AFF] font-medium">{String(selectedProject.settings.cylinderCurvature)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => {
+                  loadProject(selectedProject.name);
+                  setShowProjectDetails(false);
+                }}
+                className="flex-1 btn-primary"
+              >
+                Load Project
+              </button>
+              <button
+                onClick={() => {
+                  // Share functionality would go here
+                  setShowProjectDetails(false);
+                }}
+                className="flex-1 btn-secondary"
+              >
+                Share
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 };

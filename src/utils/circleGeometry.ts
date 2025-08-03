@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { CircleData, CircleGridConfig, ShapeType } from '../types';
 
 export const createCircleGeometry = (radius: number): THREE.BufferGeometry => {
-  const geometry = new THREE.CircleGeometry(radius, 32);
+  const geometry = new THREE.CircleGeometry(radius, 512);
   return geometry;
 };
 
@@ -12,19 +12,19 @@ export const createRectangleGeometry = (width: number, height: number): THREE.Bu
 };
 
 export const calculateScaledWidth = (
-  baseWidth: number, 
-  columnIndex: number, 
-  totalColumns: number, 
-  scaleFactor: number, 
+  baseWidth: number,
+  columnIndex: number,
+  totalColumns: number,
+  scaleFactor: number,
   enableScaling: boolean
 ): number => {
   if (!enableScaling || totalColumns <= 1) {
     return baseWidth;
   }
-  
+
   // Calculate progression from 0 to 1 across columns
   const progression = columnIndex / (totalColumns - 1);
-  
+
   // Apply scaling: start at baseWidth, scale up by factor
   return baseWidth * (1 + (scaleFactor - 1) * progression);
 };
@@ -34,7 +34,7 @@ export const createShapeGeometry = (config: CircleGridConfig, columnIndex?: numb
     case ShapeType.Circle:
       return createCircleGeometry(config.circleRadius);
     case ShapeType.Rectangle: {
-      const width = columnIndex !== undefined && enableWidthScaling 
+      const width = columnIndex !== undefined && enableWidthScaling
         ? calculateScaledWidth(config.rectangleWidth, columnIndex, config.cols, widthScaleFactor || 1, enableWidthScaling)
         : config.rectangleWidth;
       return createRectangleGeometry(width, config.rectangleHeight);
@@ -45,45 +45,45 @@ export const createShapeGeometry = (config: CircleGridConfig, columnIndex?: numb
 };
 
 export const createCircleMaterial = (fillColor: string, strokeColor: string): THREE.Material[] => {
-  const fillMaterial = new THREE.MeshBasicMaterial({ 
+  const fillMaterial = new THREE.MeshBasicMaterial({
     color: fillColor,
     side: THREE.DoubleSide
   });
-  
-  const strokeMaterial = new THREE.MeshBasicMaterial({ 
+
+  const strokeMaterial = new THREE.MeshBasicMaterial({
     color: strokeColor,
     side: THREE.DoubleSide
   });
-  
+
   return [fillMaterial, strokeMaterial];
 };
 
 export const createRectangleStrokeGeometry = (width: number, height: number, thickness: number): THREE.BufferGeometry => {
   // 더 간단한 방법: Shape과 holes를 사용해서 테두리 생성
   const shape = new THREE.Shape();
-  
+
   // 외부 직사각형
-  shape.moveTo(-width/2, -height/2);
-  shape.lineTo(width/2, -height/2);
-  shape.lineTo(width/2, height/2);
-  shape.lineTo(-width/2, height/2);
-  shape.lineTo(-width/2, -height/2);
-  
+  shape.moveTo(-width / 2, -height / 2);
+  shape.lineTo(width / 2, -height / 2);
+  shape.lineTo(width / 2, height / 2);
+  shape.lineTo(-width / 2, height / 2);
+  shape.lineTo(-width / 2, -height / 2);
+
   // 절대 두께 값으로 계산 (비율이 아닌 고정 크기)
   const absoluteThickness = Math.min(width, height) * thickness; // 작은 쪽 크기를 기준으로
   const innerWidth = width - 2 * absoluteThickness;
   const innerHeight = height - 2 * absoluteThickness;
-  
+
   if (innerWidth > 0 && innerHeight > 0) {
     const hole = new THREE.Path();
-    hole.moveTo(-innerWidth/2, -innerHeight/2);
-    hole.lineTo(innerWidth/2, -innerHeight/2);
-    hole.lineTo(innerWidth/2, innerHeight/2);
-    hole.lineTo(-innerWidth/2, innerHeight/2);
-    hole.lineTo(-innerWidth/2, -innerHeight/2);
+    hole.moveTo(-innerWidth / 2, -innerHeight / 2);
+    hole.lineTo(innerWidth / 2, -innerHeight / 2);
+    hole.lineTo(innerWidth / 2, innerHeight / 2);
+    hole.lineTo(-innerWidth / 2, innerHeight / 2);
+    hole.lineTo(-innerWidth / 2, -innerHeight / 2);
     shape.holes.push(hole);
   }
-  
+
   const geometry = new THREE.ShapeGeometry(shape);
   return geometry;
 };
@@ -95,7 +95,7 @@ export const createShapeStrokeGeometry = (config: CircleGridConfig, borderThickn
       return new THREE.RingGeometry(innerRadius, config.circleRadius, 32);
     }
     case ShapeType.Rectangle: {
-      const width = columnIndex !== undefined && enableWidthScaling 
+      const width = columnIndex !== undefined && enableWidthScaling
         ? calculateScaledWidth(config.rectangleWidth, columnIndex, config.cols, widthScaleFactor || 1, enableWidthScaling)
         : config.rectangleWidth;
       return createRectangleStrokeGeometry(width, config.rectangleHeight, borderThickness);
@@ -110,16 +110,16 @@ export const createShapeStrokeGeometry = (config: CircleGridConfig, borderThickn
 export const generateCirclePositions = (config: CircleGridConfig): CircleData[] => {
   const { rows, cols, rowSpacing, colSpacing } = config;
   const circles: CircleData[] = [];
-  
+
   const totalWidth = (cols - 1) * colSpacing;
   const totalHeight = (rows - 1) * rowSpacing;
-  
+
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
       const x = col * colSpacing - totalWidth / 2;
       const y = row * rowSpacing - totalHeight / 2;
       const z = 0;
-      
+
       circles.push({
         position: { x, y, z },
         colorGroup: 0, // Will be assigned later
@@ -128,7 +128,7 @@ export const generateCirclePositions = (config: CircleGridConfig): CircleData[] 
       });
     }
   }
-  
+
   return circles;
 };
 
@@ -147,16 +147,16 @@ class SeededRandom {
 }
 
 export const assignColorGroups = (
-  circles: CircleData[], 
+  circles: CircleData[],
   frequencies: [number, number, number],
   seed?: number
 ): void => {
   const totalFreq = frequencies[0] + frequencies[1] + frequencies[2];
   const normalizedFreq = frequencies.map(f => f / totalFreq);
-  
+
   // Use seeded random if seed is provided, otherwise use Math.random
   const random = seed !== undefined ? new SeededRandom(seed) : null;
-  
+
   circles.forEach(circle => {
     const rand = random ? random.next() : Math.random();
     if (rand < normalizedFreq[0]) {
@@ -178,30 +178,30 @@ export const applyCylindricalTransform = (
   rotationY: number = 0
 ): void => {
   const radius = cylinderRadius;
-  
+
   circles.forEach(circle => {
     if (!circle.mesh) return;
-    
+
     if (axis === 'y') {
       // Y축 중심 회전 (기존 방식 - X 좌표를 기준으로 회전)
       const originalX = circle.position.x;
       const angle = (originalX / (config.cols * config.colSpacing)) * Math.PI * 2 * curvature;
-      
+
       const newX = Math.sin(angle) * radius * curvature + originalX * (1 - curvature);
       const newZ = (Math.cos(angle) * radius - radius) * curvature;
       const newY = circle.position.y;
-      
+
       circle.mesh.position.set(newX, newY, newZ);
       circle.mesh.rotation.y = angle + rotationY;
     } else {
       // X축 중심 회전 (Y 좌표를 기준으로 회전)
       const originalY = circle.position.y;
       const angle = (originalY / (config.rows * config.rowSpacing)) * Math.PI * 2 * curvature;
-      
+
       const newY = Math.sin(angle) * radius * curvature + originalY * (1 - curvature);
       const newZ = (Math.cos(angle) * radius - radius) * curvature;
       const newX = circle.position.x;
-      
+
       circle.mesh.position.set(newX, newY, newZ);
       circle.mesh.rotation.x = angle + rotationY;
     }
@@ -215,7 +215,7 @@ export const applyAxisRotations = (
 ): void => {
   circles.forEach(circle => {
     if (!circle.mesh) return;
-    
+
     circle.mesh.rotation.x = rotationX;
     circle.mesh.rotation.z = rotationZ;
   });
