@@ -179,28 +179,33 @@ export const applyCylindricalTransform = (
 ): void => {
   const radius = cylinderRadius;
 
+
+
   circles.forEach(circle => {
     if (!circle.mesh) return;
 
+    // 원본 위치 가져오기 (userData에서)
+    const originalPosition = circle.mesh.userData.originalPosition || circle.position;
+
     if (axis === 'y') {
       // Y축 중심 회전 (기존 방식 - X 좌표를 기준으로 회전)
-      const originalX = circle.position.x;
+      const originalX = originalPosition.x;
       const angle = (originalX / (config.cols * config.colSpacing)) * Math.PI * 2 * curvature;
 
       const newX = Math.sin(angle) * radius * curvature + originalX * (1 - curvature);
       const newZ = (Math.cos(angle) * radius - radius) * curvature;
-      const newY = circle.position.y;
+      const newY = originalPosition.y;
 
       circle.mesh.position.set(newX, newY, newZ);
       circle.mesh.rotation.y = angle + rotationY;
     } else {
       // X축 중심 회전 (Y 좌표를 기준으로 회전)
-      const originalY = circle.position.y;
+      const originalY = originalPosition.y;
       const angle = (originalY / (config.rows * config.rowSpacing)) * Math.PI * 2 * curvature;
 
       const newY = Math.sin(angle) * radius * curvature + originalY * (1 - curvature);
       const newZ = (Math.cos(angle) * radius - radius) * curvature;
-      const newX = circle.position.x;
+      const newX = originalPosition.x;
 
       circle.mesh.position.set(newX, newY, newZ);
       circle.mesh.rotation.x = angle + rotationY;

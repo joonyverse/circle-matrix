@@ -86,49 +86,98 @@ body {
 
 /* Control Panel Slide Animation */
 .control-panel-slide {
-    transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    will-change: transform;
+    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    will-change: transform, opacity;
+    transform-origin: right center;
 }
 
 .control-panel-slide-enter {
-    transform: translateX(100%);
+    transform: translateX(100%) scale(0.95);
+    opacity: 0;
 }
 
 .control-panel-slide-enter-active {
-    transform: translateX(0);
+    transform: translateX(0) scale(1);
+    opacity: 1;
 }
 
 .control-panel-slide-exit {
-    transform: translateX(0);
+    transform: translateX(0) scale(1);
+    opacity: 1;
 }
 
 .control-panel-slide-exit-active {
-    transform: translateX(100%);
+    transform: translateX(100%) scale(0.95);
+    opacity: 0;
 }
 
 /* Toggle Button Animation */
-.control-panel-toggle {
-    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+.control-panel-toggle,
+.project-manager-toggle,
+.shortcuts-toggle {
+    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     will-change: opacity, transform;
+    transform-origin: center;
 }
 
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
-    width: 6px;
+    width: 8px;
 }
 
 ::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.3);
-    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.3);
+}
+
+::-webkit-scrollbar-thumb:active {
+    background: rgba(255, 255, 255, 0.4);
+}
+
+/* Control Panel specific scrollbar hiding */
+.control-panel-slide::-webkit-scrollbar,
+.control-panel-slide *::-webkit-scrollbar {
+    display: none;
+}
+
+.control-panel-slide,
+.control-panel-slide * {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+/* Project Manager specific scrollbar hiding */
+.animate-slide-in::-webkit-scrollbar,
+.animate-slide-in *::-webkit-scrollbar {
+    display: none;
+}
+
+.animate-slide-in,
+.animate-slide-in * {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+/* Project Panel specific scrollbar hiding */
+.scrollbar-hide::-webkit-scrollbar,
+.scrollbar-hide *::-webkit-scrollbar {
+    display: none;
+}
+
+.scrollbar-hide,
+.scrollbar-hide * {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
 }
 
 /* Focus States */
@@ -198,11 +247,49 @@ body {
 
 @keyframes slideIn {
     from {
-        transform: translateX(-100%);
+        transform: translateX(100%);
+        opacity: 0;
     }
 
     to {
         transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOut {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+
+@keyframes previewSlideIn {
+    from {
+        transform: translateX(100%) scale(0.8);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0) scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes previewSlideOut {
+    from {
+        transform: translateX(0) scale(1);
+        opacity: 1;
+    }
+
+    to {
+        transform: translateX(100%) scale(0.8);
+        opacity: 0;
     }
 }
 
@@ -224,6 +311,56 @@ body {
 
 .animate-slide-in {
     animation: slideIn 0.3s ease-out;
+}
+
+.animate-slide-out {
+    animation: slideOut 0.3s ease-out;
+}
+
+.animate-preview-slide-in {
+    animation: previewSlideIn 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.animate-preview-slide-out {
+    animation: previewSlideOut 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+@keyframes folderSlideDown {
+    from {
+        max-height: 0;
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        max-height: 2000px;
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes folderSlideUp {
+    from {
+        max-height: 2000px;
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    to {
+        max-height: 0;
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+}
+
+.animate-folder-slide-down {
+    animation: folderSlideDown 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    overflow: hidden;
+}
+
+.animate-folder-slide-up {
+    animation: folderSlideUp 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    overflow: hidden;
 }
 
 .animate-pulse {

@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import * as THREE from 'three';
-import { TrackballControls } from 'three-stdlib';
+import { TrackballControls, OrbitControls } from 'three-stdlib';
 import { CircleData, CircleGridConfig, ShapeType } from '../types';
 import {
   createShapeGeometry,
@@ -11,6 +11,8 @@ import {
 } from '../utils/circleGeometry';
 import ProjectManager from './ProjectManager';
 import SaveProjectModal from './SaveProjectModal';
+import DeleteConfirmModal from './DeleteConfirmModal';
+import { CaptureListModal } from './CaptureListModal';
 import { ControlPanel } from './ui/ControlPanel';
 import { Modal } from './ui/Modal';
 import { ToastContainer, useToast } from './ui/Toast';
@@ -20,6 +22,7 @@ interface Project {
   name: string;
   settings: Record<string, unknown>;
   timestamp: number;
+  previewImage?: string;
 }
 
 const ThreeScene: React.FC = () => {
@@ -27,7 +30,7 @@ const ThreeScene: React.FC = () => {
   const sceneRef = useRef<THREE.Scene>();
   const rendererRef = useRef<THREE.WebGLRenderer>();
   const cameraRef = useRef<THREE.PerspectiveCamera>();
-  const controlsRef = useRef<TrackballControls | null>(null);
+  const controlsRef = useRef<TrackballControls | OrbitControls | null>(null);
   const circlesRef = useRef<CircleData[]>([]);
   const animationIdRef = useRef<number>();
   const [showProjectManager, setShowProjectManager] = useState(true);
@@ -37,6 +40,24 @@ const ThreeScene: React.FC = () => {
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [showProjectDetails, setShowProjectDetails] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [isZenMode, setIsZenMode] = useState(false);
+  const [previousUIState, setPreviousUIState] = useState<{
+    showControlPanel: boolean;
+    showProjectManager: boolean;
+  }>({
+    showControlPanel: true,
+    showProjectManager: true
+  });
+  const [deleteModal, setDeleteModal] = useState<{
+    isOpen: boolean;
+    projectName: string;
+  }>({
+    isOpen: false,
+    projectName: ''
+  });
+  const [showCaptureList, setShowCaptureList] = useState(false);
+  const [showShortcutsGuide, setShowShortcutsGuide] = useState(true);
+  const [cameraControlType, setCameraControlType] = useState<'trackball' | 'orbit'>('orbit');
 
   // Toast 시스템
   const toast = useToast();
@@ -79,20 +100,21 @@ const ThreeScene: React.FC = () => {
     frequency1: 1,
     syncColors1: false,
     fill1: { r: 0, g: 122, b: 255, a: 0.8 },
-    stroke1: { r: 0, g: 122, b: 255, a: 1.0 },
+    stroke1: { r: 0, g: 0, b: 0, a: 1.0 }, // 검은색 테두리
     frequency2: 1,
     syncColors2: false,
     fill2: { r: 52, g: 199, b: 89, a: 0.8 },
-    stroke2: { r: 52, g: 199, b: 89, a: 1.0 },
+    stroke2: { r: 0, g: 0, b: 0, a: 1.0 }, // 검은색 테두리
     frequency3: 1,
     syncColors3: false,
     fill3: { r: 175, g: 82, b: 222, a: 0.8 },
-    stroke3: { r: 175, g: 82, b: 222, a: 1.0 },
+    stroke3: { r: 0, g: 0, b: 0, a: 1.0 }, // 검은색 테두리
 
     // Camera (only position, settings use default values)
     cameraPositionX: 0,
     cameraPositionY: 0,
-    cameraPositionZ: 15
+    cameraPositionZ: 15,
+    cameraControlType: 'orbit' as const
   };
 
   // localStorage에서 설정 로드하는 함수
@@ -109,7 +131,14 @@ const ThreeScene: React.FC = () => {
         }
 
         // 저장된 값들을 기본값과 병합
-        return { ...defaultSettings, ...settings };
+        const mergedSettings = { ...defaultSettings, ...settings };
+
+        // 카메라 컨트롤 타입이 저장되어 있으면 적용
+        if (settings.cameraControlType) {
+          setCameraControlType(settings.cameraControlType);
+        }
+
+        return mergedSettings;
       }
     } catch (error) {
       console.warn('Failed to load settings from localStorage:', error);
@@ -123,7 +152,7 @@ const ThreeScene: React.FC = () => {
   const [showControlPanel, setShowControlPanel] = useState(true);
 
   // 카메라 설정 기본값 (UI에서 제거됨)
-  const cameraDefaults = {
+  const cameraDefaults = useMemo(() => ({
     cameraMinDistance: 5,
     cameraMaxDistance: 50,
     cameraEnablePan: true,
@@ -131,7 +160,7 @@ const ThreeScene: React.FC = () => {
     zoomSpeed: 1.5,
     panSpeed: 1.5,
     dynamicDampingFactor: 0.1
-  };
+  }), []);
 
 
 
@@ -150,11 +179,13 @@ const ThreeScene: React.FC = () => {
     colorSeedRef.current = Math.floor(Math.random() * 1000000);
     createCircles();
     saveSettings();
+    toast.success('All settings have been reset to default values!');
   }, []);
 
   // 카메라 리셋
   const handleResetCamera = useCallback(() => {
     resetCameraPosition();
+    toast.success('Camera position has been reset to default!');
   }, []);
 
   // 색상 재생성
@@ -162,6 +193,7 @@ const ThreeScene: React.FC = () => {
     colorSeedRef.current = Math.floor(Math.random() * 1000000);
     createCircles();
     saveSettings();
+    toast.success('Colors have been regenerated with a new random seed!');
   }, []);
 
   // URL 공유
@@ -204,14 +236,15 @@ const ThreeScene: React.FC = () => {
     }
   }, []);
 
-  // 현재 설정을 가져오는 함수 (카메라 위치 제외)
+  // 현재 설정을 가져오는 함수 (카메라 위치 제외, 카메라 컨트롤 타입 포함)
   const getCurrentSettings = useCallback(() => {
     const { cameraPositionX, cameraPositionY, cameraPositionZ, ...settingsWithoutCamera } = settings;
     return {
       ...settingsWithoutCamera,
-      colorSeed: colorSeedRef.current
+      colorSeed: colorSeedRef.current,
+      cameraControlType: cameraControlType
     };
-  }, [settings]);
+  }, [settings, cameraControlType]);
 
   // 설정을 적용하는 함수 (카메라 위치 제외)
   const applySettings = useCallback((newSettings: Record<string, unknown>) => {
@@ -221,6 +254,11 @@ const ThreeScene: React.FC = () => {
     // 색상 시드 적용
     if (newSettings.colorSeed !== undefined) {
       colorSeedRef.current = newSettings.colorSeed as number;
+    }
+
+    // 카메라 컨트롤 타입 적용
+    if (newSettings.cameraControlType !== undefined) {
+      setCameraControlType(newSettings.cameraControlType as 'trackball' | 'orbit');
     }
 
     // 카메라 위치를 제외한 설정만 localStorage에 저장
@@ -249,8 +287,15 @@ const ThreeScene: React.FC = () => {
     const project = projects.find(p => p.name === name);
 
     if (project) {
-      applySettings(project.settings);
+      // 즉시 활성 프로젝트 설정 (UI 반응성 향상)
       setActiveProject(name);
+
+      // 카메라 컨트롤 타입 적용
+      if (project.settings.cameraControlType !== undefined) {
+        setCameraControlType(project.settings.cameraControlType as 'trackball' | 'orbit');
+      }
+
+      applySettings(project.settings);
 
       // 프로젝트 로드 후 카메라를 기본 위치로 리셋
       setTimeout(() => {
@@ -265,10 +310,36 @@ const ThreeScene: React.FC = () => {
   // 프로젝트 저장 함수
   const saveProject = useCallback((name: string) => {
     const currentSettings = getCurrentSettings();
+
+    // 프로젝트 캡처 이미지 생성
+    let previewImage = '';
+    try {
+      if (rendererRef.current && sceneRef.current && cameraRef.current) {
+        // 렌더러 크기를 미리보기용으로 조정 (정사각형)
+        const originalSize = rendererRef.current.getSize(new THREE.Vector2());
+        const previewSize = 600; // 고해상도 캡처
+        rendererRef.current.setSize(previewSize, previewSize);
+
+        // 렌더링
+        rendererRef.current.render(sceneRef.current, cameraRef.current);
+
+        // 캔버스를 이미지로 변환
+        const canvas = rendererRef.current.domElement;
+        previewImage = canvas.toDataURL('image/png');
+
+        // 원래 크기로 복원
+        rendererRef.current.setSize(originalSize.x, originalSize.y);
+        rendererRef.current.render(sceneRef.current, cameraRef.current);
+      }
+    } catch (error) {
+      console.error('Failed to capture preview:', error);
+    }
+
     const project: Project = {
       name,
       settings: currentSettings,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      previewImage: previewImage
     };
 
     const savedProjects = localStorage.getItem(PROJECTS_KEY);
@@ -386,6 +457,14 @@ const ThreeScene: React.FC = () => {
           colorSeedRef.current = settings.colorSeed as number;
         }
 
+        // 카메라 컨트롤 타입 적용
+        if (settings.cameraControlType !== undefined) {
+          setCameraControlType(settings.cameraControlType as 'trackball' | 'orbit');
+        }
+
+        // 현재 settings 상태에 적용
+        setSettings(prev => ({ ...prev, ...settings }));
+
         // 카메라 위치를 제외한 설정만 localStorage에 저장
         const { cameraPositionX, cameraPositionY, cameraPositionZ, ...settingsWithoutCamera } = settings;
         localStorage.setItem(STORAGE_KEY, JSON.stringify(settingsWithoutCamera));
@@ -397,6 +476,7 @@ const ThreeScene: React.FC = () => {
         toast.success('Project loaded from URL successfully.');
         return true;
       } catch (error) {
+        console.error('Error loading project from URL:', error);
         return false;
       }
     }
@@ -452,24 +532,239 @@ const ThreeScene: React.FC = () => {
     setShowProjectDetails(true);
   }, []);
 
-  // RGBA 색상을 CSS 색상 문자열로 변환
-  const rgbToCss = (rgba: { r: number; g: number; b: number; a: number }) => {
-    return `rgb(${rgba.r}, ${rgba.g}, ${rgba.b})`;
-  };
+  // Delete 모달 핸들러들
+  const handleDeleteProjectRequest = useCallback((projectName: string) => {
+    setDeleteModal({
+      isOpen: true,
+      projectName
+    });
+  }, []);
 
-  // 모든 설정 저장 (카메라 위치 제외)
+  const handleDeleteConfirm = useCallback(() => {
+    const { projectName } = deleteModal;
+    try {
+      deleteProject(projectName);
+      toast.success(`Project "${projectName}" deleted successfully.`);
+    } catch (error) {
+      toast.error('Error deleting project.');
+    }
+    setDeleteModal({ isOpen: false, projectName: '' });
+  }, [deleteModal, deleteProject, toast]);
+
+  const handleDeleteCancel = useCallback(() => {
+    setDeleteModal({ isOpen: false, projectName: '' });
+  }, []);
+
+  // 캡처 기능
+  const handleCapture = useCallback(async () => {
+    console.log('🎯 Capture started');
+
+    if (!rendererRef.current || !sceneRef.current || !cameraRef.current) {
+      console.error('❌ Renderer, Scene, or Camera not available');
+      toast.error('Renderer not available');
+      return;
+    }
+
+    try {
+      // 현재 렌더러의 캔버스를 캡처
+      const canvas = rendererRef.current.domElement;
+      console.log('🎯 Canvas found:', canvas);
+      console.log('🎯 Canvas size:', canvas.width, 'x', canvas.height);
+
+      // 렌더러를 한 번 더 렌더링하여 최신 상태 캡처
+      rendererRef.current.render(sceneRef.current, cameraRef.current);
+
+      // 캔버스를 blob으로 변환
+      canvas.toBlob(async (blob) => {
+        console.log('🎯 Blob created:', blob);
+
+        if (!blob) {
+          console.error('❌ Failed to create blob');
+          toast.error('Failed to capture image');
+          return;
+        }
+
+        console.log('🎯 Blob size:', blob.size, 'bytes');
+        console.log('🎯 Blob type:', blob.type);
+
+        try {
+          // 클립보드에 복사
+          console.log('🎯 Attempting to copy to clipboard...');
+          await navigator.clipboard.write([
+            new ClipboardItem({
+              'image/png': blob
+            })
+          ]);
+          console.log('✅ Successfully copied to clipboard');
+
+          // 임시로 이미지를 화면에 표시하여 확인 (디버깅용)
+          const url = URL.createObjectURL(blob);
+          const img = document.createElement('img');
+          img.src = url;
+          img.style.position = 'fixed';
+          img.style.top = '10px';
+          img.style.right = '10px';
+          img.style.width = '200px';
+          img.style.height = 'auto';
+          img.style.border = '2px solid red';
+          img.style.zIndex = '9999';
+          img.style.backgroundColor = 'white';
+          img.style.padding = '10px';
+          img.style.borderRadius = '8px';
+          img.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)';
+          img.style.cursor = 'pointer';
+          img.style.transform = 'translateX(100%) scale(0.8)';
+          img.style.opacity = '0';
+          img.style.transition = 'all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+          img.title = 'Right-click to save image';
+          document.body.appendChild(img);
+
+          // 나타나는 애니메이션
+          requestAnimationFrame(() => {
+            img.style.transform = 'translateX(0) scale(1)';
+            img.style.opacity = '1';
+          });
+
+          let timeoutId: number;
+          let isContextMenuOpen = false;
+
+          // 사라지는 애니메이션 함수
+          const removeWithAnimation = () => {
+            img.style.transform = 'translateX(100%) scale(0.8)';
+            img.style.opacity = '0';
+            setTimeout(() => {
+              if (document.body.contains(img)) {
+                document.body.removeChild(img);
+                URL.revokeObjectURL(url);
+              }
+            }, 400); // 애니메이션 완료 후 제거
+          };
+
+          // 3초 후 자동 제거 (컨텍스트 메뉴가 열려있지 않을 때만)
+          const startAutoRemove = () => {
+            timeoutId = setTimeout(() => {
+              if (!isContextMenuOpen) {
+                removeWithAnimation();
+              }
+            }, 3000);
+          };
+
+          // 우클릭 이벤트 처리
+          img.addEventListener('contextmenu', (e) => {
+            isContextMenuOpen = true;
+            clearTimeout(timeoutId);
+          });
+
+          // 컨텍스트 메뉴가 닫힐 때 감지
+          document.addEventListener('click', () => {
+            if (isContextMenuOpen) {
+              isContextMenuOpen = false;
+              startAutoRemove();
+            }
+          });
+
+          // ESC 키로 수동 제거
+          const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+              clearTimeout(timeoutId);
+              removeWithAnimation();
+              document.removeEventListener('keydown', handleKeyDown);
+            }
+          };
+          document.addEventListener('keydown', handleKeyDown);
+
+          // 자동 제거 시작
+          startAutoRemove();
+
+          // 로컬스토리지에 캡처 저장
+          const reader = new FileReader();
+          reader.onload = () => {
+            const dataUrl = reader.result as string;
+            const captureItem = {
+              id: `capture-${Date.now()}`,
+              name: `Capture_${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}`,
+              dataUrl: dataUrl,
+              timestamp: Date.now(),
+              settings: { ...settings }
+            };
+
+            // 기존 캡처 목록 로드
+            const existingCaptures = localStorage.getItem('circle-matrix-captures');
+            const captures = existingCaptures ? JSON.parse(existingCaptures) : [];
+
+            // 새 캡처 추가 (최대 50개 유지)
+            captures.unshift(captureItem);
+            if (captures.length > 50) {
+              captures.pop();
+            }
+
+            // 로컬스토리지에 저장
+            localStorage.setItem('circle-matrix-captures', JSON.stringify(captures));
+          };
+          reader.readAsDataURL(blob);
+
+          toast.success('Screenshot copied to clipboard!');
+        } catch (clipboardError) {
+          console.error('❌ Clipboard copy failed:', clipboardError);
+          // 클립보드 복사 실패 시 다운로드
+          console.log('🎯 Falling back to download...');
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `circle-matrix-${Date.now()}.png`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          toast.success('Screenshot downloaded!');
+        }
+      }, 'image/png');
+    } catch (error) {
+      console.error('❌ Capture error:', error);
+      toast.error('Failed to capture screenshot');
+    }
+  }, [toast]);
+
+  // Zen 모드 토글 함수
+  const toggleZenMode = useCallback(() => {
+    if (isZenMode) {
+      // Zen 모드 해제: 이전 상태로 복원
+      setShowControlPanel(previousUIState.showControlPanel);
+      setShowProjectManager(previousUIState.showProjectManager);
+      setIsZenMode(false);
+      toast.success('Zen mode disabled');
+    } else {
+      // Zen 모드 활성화: 현재 상태 저장 후 모든 UI 숨기기
+      setPreviousUIState({
+        showControlPanel: showControlPanel,
+        showProjectManager: showProjectManager
+      });
+      setShowControlPanel(false);
+      setShowProjectManager(false);
+      setIsZenMode(true);
+      toast.success('Zen mode enabled');
+    }
+  }, [isZenMode, previousUIState, showControlPanel, showProjectManager, toast]);
+
+  // RGBA 색상을 CSS 색상 문자열로 변환
+  const rgbToCss = useCallback((rgba: { r: number; g: number; b: number; a: number }) => {
+    return `rgb(${rgba.r}, ${rgba.g}, ${rgba.b})`;
+  }, []);
+
+  // 모든 설정 저장 (카메라 위치 제외, 카메라 컨트롤 타입 포함)
   const saveSettings = useCallback(() => {
     const { cameraPositionX, cameraPositionY, cameraPositionZ, ...settingsWithoutCamera } = settings;
     const settingsToSave = {
       ...settingsWithoutCamera,
-      colorSeed: colorSeedRef.current
+      colorSeed: colorSeedRef.current,
+      cameraControlType: cameraControlType
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settingsToSave));
-  }, [settings]);
+  }, [settings, cameraControlType]);
 
 
 
-  const config: CircleGridConfig = {
+  const getConfig = useCallback((): CircleGridConfig => ({
     rows: settings.rows,
     cols: settings.cols,
     shapeType: settings.shapeType,
@@ -478,9 +773,30 @@ const ThreeScene: React.FC = () => {
     rectangleHeight: settings.rectangleHeight,
     rowSpacing: settings.rowSpacing,
     colSpacing: settings.colSpacing
-  };
+  }), [settings]);
 
   const initScene = () => {
+    initSceneWithControlType(cameraControlType);
+  };
+
+  const initSceneWithControlType = useCallback((controlType: 'trackball' | 'orbit') => {
+    // 기존 컨트롤 정리
+    if (controlsRef.current) {
+      controlsRef.current.dispose();
+      controlsRef.current = null;
+    }
+
+    // 기존 렌더러 DOM 요소 제거
+    if (rendererRef.current && mountRef.current) {
+      try {
+        if (mountRef.current.contains(rendererRef.current.domElement)) {
+          mountRef.current.removeChild(rendererRef.current.domElement);
+        }
+      } catch (error) {
+        console.warn('Failed to remove existing renderer DOM element:', error);
+      }
+    }
+
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(
       75,
@@ -508,19 +824,35 @@ const ThreeScene: React.FC = () => {
     }
 
     // 카메라 컨트롤 설정
-    const trackballControls = new TrackballControls(camera, renderer.domElement);
-    trackballControls.minDistance = cameraDefaults.cameraMinDistance;
-    trackballControls.maxDistance = cameraDefaults.cameraMaxDistance;
-    trackballControls.noPan = !cameraDefaults.cameraEnablePan;
-    trackballControls.rotateSpeed = cameraDefaults.rotateSpeed;
-    trackballControls.zoomSpeed = cameraDefaults.zoomSpeed;
-    trackballControls.panSpeed = cameraDefaults.panSpeed;
-    trackballControls.dynamicDampingFactor = cameraDefaults.dynamicDampingFactor;
+    let controls: TrackballControls | OrbitControls;
 
-    controlsRef.current = trackballControls;
-  };
+    if (controlType === 'trackball') {
+      const trackballControls = new TrackballControls(camera, renderer.domElement);
+      trackballControls.minDistance = cameraDefaults.cameraMinDistance;
+      trackballControls.maxDistance = cameraDefaults.cameraMaxDistance;
+      trackballControls.noPan = !cameraDefaults.cameraEnablePan;
+      trackballControls.rotateSpeed = cameraDefaults.rotateSpeed;
+      trackballControls.zoomSpeed = cameraDefaults.zoomSpeed;
+      trackballControls.panSpeed = cameraDefaults.panSpeed;
+      trackballControls.dynamicDampingFactor = cameraDefaults.dynamicDampingFactor;
+      controls = trackballControls;
+    } else {
+      const orbitControls = new OrbitControls(camera, renderer.domElement);
+      orbitControls.minDistance = cameraDefaults.cameraMinDistance;
+      orbitControls.maxDistance = cameraDefaults.cameraMaxDistance;
+      orbitControls.enablePan = cameraDefaults.cameraEnablePan;
+      orbitControls.rotateSpeed = cameraDefaults.rotateSpeed;
+      orbitControls.zoomSpeed = cameraDefaults.zoomSpeed;
+      orbitControls.panSpeed = cameraDefaults.panSpeed;
+      orbitControls.enableDamping = true;
+      orbitControls.dampingFactor = cameraDefaults.dynamicDampingFactor;
+      controls = orbitControls;
+    }
 
-  const createCircles = () => {
+    controlsRef.current = controls;
+  }, [settings.backgroundColor, settings.cameraPositionX, settings.cameraPositionY, settings.cameraPositionZ, cameraDefaults]);
+
+  const createCircles = useCallback(() => {
     if (!sceneRef.current) return;
 
     // 기존 원들 제거
@@ -531,7 +863,7 @@ const ThreeScene: React.FC = () => {
     });
 
     // 새로운 도형들 생성
-    const circles = generateCirclePositions(config);
+    const circles = generateCirclePositions(getConfig());
     assignColorGroups(circles, [
       settings.frequency1,
       settings.frequency2,
@@ -543,14 +875,14 @@ const ThreeScene: React.FC = () => {
 
       // Create geometry with variable width for this specific circle
       const fillGeometry = createShapeGeometry(
-        config,
+        getConfig(),
         circle.columnIndex,
         settings.enableWidthScaling,
         settings.widthScaleFactor
       );
 
       const strokeGeometry = createShapeStrokeGeometry(
-        config,
+        getConfig(),
         settings.borderThickness,
         circle.columnIndex,
         settings.enableWidthScaling,
@@ -564,25 +896,52 @@ const ThreeScene: React.FC = () => {
           fillColor = rgbToCss(settings.fill1);
           strokeColor = settings.syncColors1 ? rgbToCss(settings.fill1) : rgbToCss(settings.stroke1);
           fillOpacity = settings.fill1.a;
-          strokeOpacity = settings.stroke1.a;
+          strokeOpacity = settings.syncColors1 ? settings.fill1.a : settings.stroke1.a;
+          if (circle.columnIndex === 0 && circle.rowIndex === 0) {
+            console.log('Color Group 0:', {
+              syncColors: settings.syncColors1,
+              fillAlpha: settings.fill1.a,
+              strokeAlpha: strokeOpacity,
+              fillColor,
+              strokeColor
+            });
+          }
           break;
         case 1:
           fillColor = rgbToCss(settings.fill2);
           strokeColor = settings.syncColors2 ? rgbToCss(settings.fill2) : rgbToCss(settings.stroke2);
           fillOpacity = settings.fill2.a;
-          strokeOpacity = settings.stroke2.a;
+          strokeOpacity = settings.syncColors2 ? settings.fill2.a : settings.stroke2.a;
+          if (circle.columnIndex === 0 && circle.rowIndex === 0) {
+            console.log('Color Group 1:', {
+              syncColors: settings.syncColors2,
+              fillAlpha: settings.fill2.a,
+              strokeAlpha: strokeOpacity,
+              fillColor,
+              strokeColor
+            });
+          }
           break;
         case 2:
           fillColor = rgbToCss(settings.fill3);
           strokeColor = settings.syncColors3 ? rgbToCss(settings.fill3) : rgbToCss(settings.stroke3);
           fillOpacity = settings.fill3.a;
-          strokeOpacity = settings.stroke3.a;
+          strokeOpacity = settings.syncColors3 ? settings.fill3.a : settings.stroke3.a;
+          if (circle.columnIndex === 0 && circle.rowIndex === 0) {
+            console.log('Color Group 2:', {
+              syncColors: settings.syncColors3,
+              fillAlpha: settings.fill3.a,
+              strokeAlpha: strokeOpacity,
+              fillColor,
+              strokeColor
+            });
+          }
           break;
         default:
           fillColor = rgbToCss(settings.fill1);
           strokeColor = settings.syncColors1 ? rgbToCss(settings.fill1) : rgbToCss(settings.stroke1);
           fillOpacity = settings.fill1.a;
-          strokeOpacity = settings.stroke1.a;
+          strokeOpacity = settings.syncColors1 ? settings.fill1.a : settings.stroke1.a;
       }
 
       // 채우기
@@ -614,16 +973,25 @@ const ThreeScene: React.FC = () => {
     });
 
     circlesRef.current = circles;
-    updateTransforms();
-  };
+  }, [settings, getConfig, rgbToCss]);
 
-  const updateTransforms = () => {
+  const updateTransforms = useCallback(() => {
+    // 먼저 모든 원을 원본 위치로 리셋
+    circlesRef.current.forEach(circle => {
+      if (!circle.mesh) return;
+      const originalPosition = circle.mesh.userData.originalPosition;
+      if (originalPosition) {
+        circle.mesh.position.set(originalPosition.x, originalPosition.y, originalPosition.z);
+        circle.mesh.rotation.set(0, 0, 0);
+      }
+    });
+
     // Apply cylindrical transform first
     applyCylindricalTransform(
       circlesRef.current,
       settings.cylinderCurvature,
       settings.cylinderRadius,
-      config,
+      getConfig(),
       settings.cylinderAxis,
       settings.rotationY
     );
@@ -640,14 +1008,15 @@ const ThreeScene: React.FC = () => {
         currentPos.z + settings.objectPositionZ
       );
 
-      // 통합된 rotation 적용
+      // 통합된 rotation 적용 (cylindrical transform의 rotation은 유지)
+      const currentRotation = circle.mesh.rotation;
       circle.mesh.rotation.set(
         settings.rotationX,
-        settings.rotationY,
+        currentRotation.y, // cylindrical transform에서 설정한 rotationY 유지
         settings.rotationZ
       );
     });
-  };
+  }, [settings, getConfig]);
 
   const resetCameraPosition = () => {
     if (!cameraRef.current || !controlsRef.current) return;
@@ -661,8 +1030,28 @@ const ThreeScene: React.FC = () => {
       controlsRef.current.target.set(0, 0, 0);
       controlsRef.current.reset();
       controlsRef.current.update();
+    } else if (controlsRef.current instanceof OrbitControls) {
+      controlsRef.current.target.set(0, 0, 0);
+      controlsRef.current.reset();
+      controlsRef.current.update();
     }
   };
+
+  const changeCameraControlType = useCallback((type: 'trackball' | 'orbit') => {
+    setCameraControlType(type);
+    // 설정에 카메라 컨트롤 타입 저장
+    setSettings(prev => ({ ...prev, cameraControlType: type }));
+    // 즉시 새로운 컨트롤 적용 (타입을 직접 전달)
+    initSceneWithControlType(type);
+    createCircles();
+    // createCircles 후에 updateTransforms 호출
+    setTimeout(() => {
+      updateTransforms();
+    }, 0);
+    toast.success(`Camera control changed to ${type.charAt(0).toUpperCase() + type.slice(1)} mode!`);
+  }, [initSceneWithControlType, createCircles, updateTransforms, toast]);
+
+
 
   const animate = () => {
     animationIdRef.current = requestAnimationFrame(animate);
@@ -715,6 +1104,13 @@ const ThreeScene: React.FC = () => {
     }
   }, [settings.backgroundColor]);
 
+  // 카메라 컨트롤 타입이 변경될 때 씬 재초기화
+  useEffect(() => {
+    if (sceneRef.current) {
+      initSceneWithControlType(cameraControlType);
+    }
+  }, [cameraControlType, initSceneWithControlType]);
+
 
 
   useEffect(() => {
@@ -727,6 +1123,13 @@ const ThreeScene: React.FC = () => {
         controlsRef.current.zoomSpeed = cameraDefaults.zoomSpeed;
         controlsRef.current.panSpeed = cameraDefaults.panSpeed;
         controlsRef.current.dynamicDampingFactor = cameraDefaults.dynamicDampingFactor;
+      } else if (controlsRef.current instanceof OrbitControls) {
+        controlsRef.current.enablePan = cameraDefaults.cameraEnablePan;
+        controlsRef.current.rotateSpeed = cameraDefaults.rotateSpeed;
+        controlsRef.current.zoomSpeed = cameraDefaults.zoomSpeed;
+        controlsRef.current.panSpeed = cameraDefaults.panSpeed;
+        controlsRef.current.enableDamping = true;
+        controlsRef.current.dampingFactor = cameraDefaults.dynamicDampingFactor;
       }
     }
   }, []);
@@ -800,11 +1203,27 @@ const ThreeScene: React.FC = () => {
       }
       window.removeEventListener('resize', handleResize);
     };
-  }, [loadProjectFromURL]);
+  }, []); // 빈 의존성 배열로 변경
+
+
 
   // 키보드 컨트롤 (WASD + Ctrl+S)
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      // 입력 모드 확인 (input, textarea, contenteditable 요소에 포커스가 있는지)
+      const activeElement = document.activeElement;
+      const isInputMode = activeElement && (
+        activeElement.tagName === 'INPUT' ||
+        activeElement.tagName === 'TEXTAREA' ||
+        (activeElement as HTMLElement).contentEditable === 'true' ||
+        activeElement.getAttribute('contenteditable') === 'true'
+      );
+
+      // 입력 모드일 때만 모든 키보드 이벤트 무시
+      if (isInputMode) {
+        return;
+      }
+
       // Ctrl+S 저장 단축키
       if (event.ctrlKey && event.key === 's') {
         event.preventDefault();
@@ -818,8 +1237,19 @@ const ThreeScene: React.FC = () => {
         return;
       }
 
-      // 모달이 열려있으면 WASD 키보드 이벤트 무시
-      if (showSaveModal || showProjectManager || showProjectDetails) return;
+      // Z 키 Zen 모드 토글
+      if (event.key === 'z' || event.key === 'Z') {
+        event.preventDefault();
+        toggleZenMode();
+        return;
+      }
+
+      // ? 키 단축키 도움말 토글
+      if (event.key === '?' || event.key === '/') {
+        event.preventDefault();
+        setShowShortcutsGuide(prev => !prev);
+        return;
+      }
 
       // WASD 카메라 컨트롤
       if (!controlsRef.current) return;
@@ -830,33 +1260,21 @@ const ThreeScene: React.FC = () => {
       switch (event.code) {
         case 'KeyW':
           camera.position.z -= moveSpeed;
-          // 카메라 위치 업데이트
-          toast.info('Camera position updated.');
           break;
         case 'KeyS':
           camera.position.z += moveSpeed;
-          // 카메라 위치 업데이트
-          toast.info('Camera position updated.');
           break;
         case 'KeyA':
           camera.position.x -= moveSpeed;
-          // 카메라 위치 업데이트
-          toast.info('Camera position updated.');
           break;
         case 'KeyD':
           camera.position.x += moveSpeed;
-          // 카메라 위치 업데이트
-          toast.info('Camera position updated.');
           break;
         case 'KeyQ':
           camera.position.y += moveSpeed;
-          // 카메라 위치 업데이트
-          toast.info('Camera position updated.');
           break;
         case 'KeyE':
           camera.position.y -= moveSpeed;
-          // 카메라 위치 업데이트
-          toast.info('Camera position updated.');
           break;
       }
 
@@ -869,12 +1287,20 @@ const ThreeScene: React.FC = () => {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [activeProject, saveToActiveProject, showSaveModal, showProjectManager, showProjectDetails]);
+  }, [activeProject, showSaveModal, showProjectManager, showProjectDetails]);
 
   // Auto-save when controls change
   useEffect(() => {
     saveSettings();
   }, [settings, saveSettings]);
+
+  // Load project from URL on page load
+  useEffect(() => {
+    loadProjectFromURL();
+  }, [loadProjectFromURL]);
+
+  // URL에서 프로젝트 설정 로드 (카메라 위치 제외)
+
 
   // 강제 업데이트 시 씬 재생성
   useEffect(() => {
@@ -899,8 +1325,21 @@ const ThreeScene: React.FC = () => {
         onResetCamera={handleResetCamera}
         onRegenerateColors={handleRegenerateColors}
         onShareURL={handleShareURL}
+        onCapture={handleCapture}
+        onOpenCaptureList={() => setShowCaptureList(true)}
         isVisible={showControlPanel}
-        onToggleVisibility={() => setShowControlPanel(v => !v)}
+        onToggleVisibility={() => {
+          if (isZenMode) {
+            // Zen 모드에서 컨트롤 패널만 토글
+            setShowControlPanel(true);
+            setIsZenMode(false);
+            toast.success('Control panel shown');
+          } else {
+            setShowControlPanel(v => !v);
+          }
+        }}
+        cameraControlType={cameraControlType}
+        onCameraControlTypeChange={changeCameraControlType}
       />
 
       {/* Toast Container */}
@@ -914,9 +1353,8 @@ const ThreeScene: React.FC = () => {
         </div>
       )}
 
-      {/* Project Manager Sidebar */}
-      <div className={`fixed top-0 left-0 h-full z-10 transition-transform duration-300 ease-in-out ${showProjectManager ? 'translate-x-0' : '-translate-x-full'
-        }`}>
+      {/* Project Panel Sidebar */}
+      <div className={`fixed top-4 left-4 h-[calc(100vh-2rem)] z-10 transition-all duration-300 ease-in-out ${showProjectManager ? 'translate-x-0 opacity-100 scale-100' : '-translate-x-full opacity-0 scale-95'}`}>
         <ProjectManager
           projects={getProjects()}
           activeProject={activeProject}
@@ -928,6 +1366,7 @@ const ThreeScene: React.FC = () => {
           onOpenSaveModal={() => setShowSaveModal(true)}
           onClose={() => setShowProjectManager(false)}
           onShowProjectDetails={handleShowProjectDetails}
+          onDeleteProjectRequest={handleDeleteProjectRequest}
           toast={toast}
           onShareProject={async (settings) => {
             const projectData = encodeURIComponent(JSON.stringify(settings));
@@ -971,12 +1410,18 @@ const ThreeScene: React.FC = () => {
 
       {/* Toggle Button */}
       <button
-        onClick={() => setShowProjectManager(!showProjectManager)}
-        className={`fixed top-4 left-4 z-20 p-3 rounded-2xl smooth-transition ${showProjectManager
-          ? 'opacity-0 pointer-events-none'
-          : 'glass-strong text-[#007AFF] hover:text-[#0056CC] hover:scale-105'
-          }`}
-        title="Open Project Manager"
+        onClick={() => {
+          if (isZenMode) {
+            // Zen 모드에서 프로젝트 매니저만 토글
+            setShowProjectManager(true);
+            setIsZenMode(false);
+            toast.success('Project panel shown');
+          } else {
+            setShowProjectManager(!showProjectManager);
+          }
+        }}
+        className={`fixed top-4 left-4 z-20 p-3 rounded-2xl glass-strong text-[#007AFF] hover:text-[#0056CC] hover:scale-105 project-manager-toggle ${showProjectManager ? 'opacity-0 pointer-events-none scale-95' : 'opacity-100 scale-100'}`}
+        title={isZenMode ? "Show Project Panel" : "Open Project Panel"}
       >
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -984,8 +1429,18 @@ const ThreeScene: React.FC = () => {
       </button>
 
       {/* Camera Controls Guide */}
-      <div className="fixed bottom-4 left-4 z-20 glass-strong text-[#007AFF] px-4 py-3 rounded-2xl shadow-lg font-medium text-sm">
+      <div className={`fixed bottom-4 left-4 z-20 glass-strong text-[#007AFF] px-4 py-3 rounded-2xl shadow-lg font-medium text-sm transition-all duration-300 ease-out ${!showShortcutsGuide ? 'opacity-0 pointer-events-none transform -translate-x-full' : 'opacity-100 pointer-events-auto transform translate-x-0'}`}>
         <div className="flex items-center gap-6">
+          {/* 닫기 버튼 */}
+          <button
+            onClick={() => setShowShortcutsGuide(false)}
+            className="p-1 text-[#666] hover:text-[#007AFF] hover:bg-[#007AFF]/10 rounded smooth-transition"
+            title="Close shortcuts guide"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
           <div className="flex items-center gap-2">
             <span className="font-semibold text-[#FF9500]">WASD:</span> <span className="text-[#666]">Move Camera</span>
           </div>
@@ -998,8 +1453,25 @@ const ThreeScene: React.FC = () => {
           <div className="flex items-center gap-2">
             <span className="font-semibold text-[#34C759]">Ctrl+S:</span> <span className="text-[#666]">Save</span>
           </div>
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-[#AF52DE]">Z:</span> <span className="text-[#666]">Zen Mode</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-[#FF3B30]">? or /:</span> <span className="text-[#666]">Toggle Help</span>
+          </div>
         </div>
       </div>
+
+      {/* Shortcuts Toggle Button */}
+      <button
+        onClick={() => setShowShortcutsGuide(prev => !prev)}
+        className={`fixed bottom-4 left-4 z-20 p-3 rounded-2xl glass-strong text-[#007AFF] hover:text-[#0056CC] hover:scale-105 smooth-transition ${showShortcutsGuide ? 'opacity-0 pointer-events-none scale-95' : 'opacity-100 scale-100'}`}
+        title="Show Shortcuts"
+      >
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      </button>
 
       {/* Save Project Modal */}
       <SaveProjectModal
@@ -1015,8 +1487,10 @@ const ThreeScene: React.FC = () => {
           isOpen={showProjectDetails}
           onClose={() => setShowProjectDetails(false)}
           title="Project Details"
+          maxWidth="w-[50vw]"
+          maxHeight="max-h-[50vh]"
         >
-          <div className="p-4 max-h-96 overflow-y-auto">
+          <div className="p-4 max-h-[40vh] overflow-y-auto">
             <div className="mb-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -1027,6 +1501,23 @@ const ThreeScene: React.FC = () => {
             </div>
 
             <div className="space-y-3">
+              <h4 className="text-[#007AFF] text-sm font-medium">Project Preview:</h4>
+
+              {/* 미리보기 이미지 */}
+              <div className="glass-weak p-4 rounded-xl flex justify-center">
+                {selectedProject.previewImage ? (
+                  <img
+                    src={selectedProject.previewImage}
+                    alt={`Preview of ${selectedProject.name}`}
+                    className="w-full h-64 rounded-lg object-cover border border-white/20"
+                  />
+                ) : (
+                  <div className="w-full h-64 rounded-lg border border-white/20 flex items-center justify-center text-[#666] text-sm bg-black/20">
+                    No preview available
+                  </div>
+                )}
+              </div>
+
               <h4 className="text-[#007AFF] text-sm font-medium">Settings Preview:</h4>
 
               {/* Structure Settings */}
@@ -1089,6 +1580,21 @@ const ThreeScene: React.FC = () => {
           </div>
         </Modal>
       )}
+
+      {/* Delete Confirm Modal */}
+      <DeleteConfirmModal
+        isOpen={deleteModal.isOpen}
+        onClose={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm}
+        projectName={deleteModal.projectName}
+      />
+
+      {/* Capture List Modal */}
+      <CaptureListModal
+        isOpen={showCaptureList}
+        onClose={() => setShowCaptureList(false)}
+        toast={toast}
+      />
     </div>
   );
 };

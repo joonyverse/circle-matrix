@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { ChevronDown, ChevronRight, RotateCcw, Share2, Camera, Palette } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { ChevronRight, RotateCcw, Share2, Camera, Palette, Download, List } from 'lucide-react';
 
 // 폴더 컴포넌트
 interface FolderProps {
@@ -11,28 +11,73 @@ interface FolderProps {
 
 export const Folder: React.FC<FolderProps> = ({ title, children, defaultCollapsed = false, icon }) => {
     const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
+    const [isAnimating, setIsAnimating] = useState(false);
+    const contentRef = useRef<HTMLDivElement>(null);
+    const [contentHeight, setContentHeight] = useState(0);
+
+    // 내용 높이 측정
+    const measureHeight = () => {
+        if (contentRef.current) {
+            const height = contentRef.current.scrollHeight;
+            setContentHeight(height);
+        }
+    };
+
+    // ResizeObserver를 사용한 높이 측정
+    useEffect(() => {
+        if (!contentRef.current) return;
+
+        const resizeObserver = new ResizeObserver(() => {
+            measureHeight();
+        });
+
+        resizeObserver.observe(contentRef.current);
+
+        // 초기 높이 측정
+        const timer = setTimeout(measureHeight, 100);
+
+        return () => {
+            resizeObserver.disconnect();
+            clearTimeout(timer);
+        };
+    }, [children]);
+
+    const handleToggle = () => {
+        if (isAnimating) return; // 애니메이션 중에는 클릭 무시
+
+        setIsAnimating(true);
+        setIsCollapsed(!isCollapsed);
+
+        // 애니메이션 완료 후 상태 초기화
+        setTimeout(() => {
+            setIsAnimating(false);
+        }, 300);
+    };
 
     return (
         <div className="glass-weak rounded-xl overflow-hidden">
             <button
-                onClick={() => setIsCollapsed(!isCollapsed)}
+                onClick={handleToggle}
                 className="w-full px-4 py-3 flex items-center justify-between text-left text-[#007AFF] font-medium hover:bg-white/10 smooth-transition"
             >
                 <div className="flex items-center gap-2">
                     {icon && <span className="text-sm">{icon}</span>}
                     <span>{title}</span>
                 </div>
-                {isCollapsed ? (
+                <div className={`smooth-transition ${isCollapsed ? 'rotate-0' : 'rotate-90'}`}>
                     <ChevronRight className="w-4 h-4" />
-                ) : (
-                    <ChevronDown className="w-4 h-4" />
-                )}
+                </div>
             </button>
-            {!isCollapsed && (
-                <div className="px-4 pb-4 space-y-3">
+            <div
+                className={`overflow-hidden transition-all duration-300 ease-in-out ${isCollapsed ? 'opacity-0' : 'opacity-100'}`}
+                style={{
+                    maxHeight: isCollapsed ? '0px' : `${Math.max(contentHeight, 1)}px`
+                }}
+            >
+                <div ref={contentRef} className="px-4 pb-4 space-y-3">
                     {children}
                 </div>
-            )}
+            </div>
         </div>
     );
 };
@@ -273,7 +318,7 @@ export const Toggle: React.FC<ToggleProps> = ({
             </div>
             <button
                 onClick={() => onChange(!value)}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${value ? 'bg-[#34C759]' : 'bg-white/20'
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${value ? 'bg-[#34C759]' : 'bg-gray-400'
                     }`}
             >
                 <span
@@ -420,7 +465,7 @@ export const Button: React.FC<ButtonProps> = ({
 
     const variantClasses = {
         primary: "bg-[#007AFF] text-white hover:bg-[#0056CC] focus:ring-[#007AFF]",
-        secondary: "bg-white/10 text-[#007AFF] hover:bg-white/20 focus:ring-[#007AFF]",
+        secondary: "glass-weak text-[#007AFF] hover:bg-white/20 focus:ring-[#007AFF] border border-white/20",
         danger: "bg-[#FF3B30] text-white hover:bg-[#D70015] focus:ring-[#FF3B30]"
     };
 
@@ -449,8 +494,12 @@ interface ControlPanelProps {
     onResetCamera: () => void;
     onRegenerateColors: () => void;
     onShareURL: () => void;
+    onCapture: () => void;
+    onOpenCaptureList: () => void;
     isVisible: boolean;
     onToggleVisibility: () => void;
+    cameraControlType: 'trackball' | 'orbit';
+    onCameraControlTypeChange: (type: 'trackball' | 'orbit') => void;
 }
 
 export const ControlPanel: React.FC<ControlPanelProps> = ({
@@ -460,8 +509,12 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
     onResetCamera,
     onRegenerateColors,
     onShareURL,
+    onCapture,
+    onOpenCaptureList,
     isVisible,
-    onToggleVisibility
+    onToggleVisibility,
+    cameraControlType,
+    onCameraControlTypeChange
 }) => {
     return (
         <>
@@ -475,13 +528,13 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
             </button>
 
             {/* Control Panel - 슬라이드 애니메이션 */}
-            <div className={`fixed top-4 right-4 w-80 max-h-[calc(100vh-2rem)] overflow-y-auto glass-strong rounded-2xl shadow-2xl border border-white/20 z-30 control-panel-slide ${isVisible ? 'translate-x-0' : 'translate-x-full'}`}>
+            <div className={`fixed top-4 right-4 w-80 max-h-[calc(100vh-2rem)] overflow-y-auto glass-strong rounded-2xl shadow-2xl border border-white/20 z-30 control-panel-slide scrollbar-hide ${isVisible ? 'translate-x-0 opacity-100 scale-100' : 'translate-x-[calc(100%-2px)] opacity-0 scale-95'}`} style={{ maxHeight: 'calc(100vh - 2rem)' }}>
                 <div className="p-4 space-y-4">
                     {/* 헤더 */}
                     <div className="flex items-center justify-between pb-3 border-b border-white/20">
                         <h2 className="text-lg font-semibold text-[#007AFF] flex items-center gap-2">
                             <Palette className="w-5 h-5" />
-                            Controls
+                            Control Panel
                         </h2>
                         <div className="flex gap-2">
                             <button
@@ -498,42 +551,48 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                     <div className="space-y-2">
                         <h3 className="text-sm font-medium text-[#007AFF]">Quick Actions</h3>
                         <div className="grid grid-cols-2 gap-2">
-                            <div className="glass-weak rounded-xl p-1 flex items-center justify-center border border-white/20">
-                                <Button
-                                    label="Reset All"
-                                    onClick={onResetAll}
-                                    variant="secondary"
-                                    size="sm"
-                                    icon={<RotateCcw className="w-3 h-3" />}
-                                />
-                            </div>
-                            <div className="glass-weak rounded-xl p-1 flex items-center justify-center border border-white/20">
-                                <Button
-                                    label="Reset Camera"
-                                    onClick={onResetCamera}
-                                    variant="secondary"
-                                    size="sm"
-                                    icon={<Camera className="w-3 h-3" />}
-                                />
-                            </div>
-                            <div className="glass-weak rounded-xl p-1 flex items-center justify-center border border-white/20">
-                                <Button
-                                    label="Regenerate"
-                                    onClick={onRegenerateColors}
-                                    variant="secondary"
-                                    size="sm"
-                                    icon={<Palette className="w-3 h-3" />}
-                                />
-                            </div>
-                            <div className="glass-weak rounded-xl p-1 flex items-center justify-center border border-white/20">
-                                <Button
-                                    label="Share"
-                                    onClick={onShareURL}
-                                    variant="secondary"
-                                    size="sm"
-                                    icon={<Share2 className="w-3 h-3" />}
-                                />
-                            </div>
+                            <Button
+                                label="Reset All"
+                                onClick={onResetAll}
+                                variant="secondary"
+                                size="sm"
+                                icon={<RotateCcw className="w-3 h-3" />}
+                            />
+                            <Button
+                                label="Reset Camera"
+                                onClick={onResetCamera}
+                                variant="secondary"
+                                size="sm"
+                                icon={<Camera className="w-3 h-3" />}
+                            />
+                            <Button
+                                label="Regenerate"
+                                onClick={onRegenerateColors}
+                                variant="secondary"
+                                size="sm"
+                                icon={<Palette className="w-3 h-3" />}
+                            />
+                            <Button
+                                label="Share"
+                                onClick={onShareURL}
+                                variant="secondary"
+                                size="sm"
+                                icon={<Share2 className="w-3 h-3" />}
+                            />
+                            <Button
+                                label="Capture"
+                                onClick={onCapture}
+                                variant="secondary"
+                                size="sm"
+                                icon={<Download className="w-3 h-3" />}
+                            />
+                            <Button
+                                label="Captures"
+                                onClick={onOpenCaptureList}
+                                variant="secondary"
+                                size="sm"
+                                icon={<List className="w-3 h-3" />}
+                            />
                         </div>
                     </div>
 
@@ -586,10 +645,10 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                             <Select
                                 label="Shape Type"
                                 value={settings.shapeType}
-                                options={{ Circle: 'Circle', Rectangle: 'Rectangle' }}
+                                options={{ circle: 'Circle', rectangle: 'Rectangle' }}
                                 onChange={(value) => onSettingChange('shapeType', value)}
-                                resetValue="Circle"
-                                onReset={() => onSettingChange('shapeType', 'Circle')}
+                                resetValue="circle"
+                                onReset={() => onSettingChange('shapeType', 'circle')}
                             />
                             <Slider
                                 label="Circle Radius"
@@ -657,7 +716,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                             <Select
                                 label="Cylinder Axis"
                                 value={settings.cylinderAxis}
-                                options={{ 'Y-Axis (Horizontal)': 'y', 'X-Axis (Vertical)': 'x' }}
+                                options={{ 'y': 'Y-Axis (Horizontal)', 'x': 'X-Axis (Vertical)' }}
                                 onChange={(value) => onSettingChange('cylinderAxis', value)}
                                 resetValue="y"
                                 onReset={() => onSettingChange('cylinderAxis', 'y')}
@@ -757,13 +816,29 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                         <div className="space-y-3">
                             <div className="flex items-center justify-between">
                                 <label className="text-sm text-[#666] font-medium">Background Color</label>
+                                <button
+                                    onClick={() => onSettingChange('backgroundColor', '#f5f7fa')}
+                                    className="text-xs text-[#FF9500] hover:text-[#FF6B00] smooth-transition p-1 rounded"
+                                    title="Reset to default"
+                                >
+                                    <RotateCcw className="w-3 h-3" />
+                                </button>
                             </div>
-                            <input
-                                type="color"
-                                value={settings.backgroundColor}
-                                onChange={(e) => onSettingChange('backgroundColor', e.target.value)}
-                                className="w-full h-10 rounded-lg border-2 border-white/20 cursor-pointer"
-                            />
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="color"
+                                    value={settings.backgroundColor}
+                                    onChange={(e) => onSettingChange('backgroundColor', e.target.value)}
+                                    className="w-8 h-8 rounded-lg border-2 border-white/20 cursor-pointer flex-shrink-0"
+                                />
+                                <input
+                                    type="text"
+                                    value={settings.backgroundColor}
+                                    onChange={(e) => onSettingChange('backgroundColor', e.target.value)}
+                                    className="w-20 h-8 px-2 text-xs font-mono bg-white/10 rounded-lg border border-white/20 text-[#007AFF] focus:outline-none focus:border-[#007AFF]"
+                                    placeholder="#000000"
+                                />
+                            </div>
                         </div>
 
                         <Folder title="Color Group 1" defaultCollapsed={false}>
@@ -772,7 +847,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                                 value={settings.frequency1}
                                 min={0}
                                 max={5}
-                                step={1}
+                                step={0.1}
                                 onChange={(value) => onSettingChange('frequency1', value)}
                                 resetValue={1}
                                 onReset={() => onSettingChange('frequency1', 1)}
@@ -793,10 +868,10 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                             />
                             <ColorPicker
                                 label="Stroke Color"
-                                value={settings.stroke1}
+                                value={settings.syncColors1 ? settings.fill1 : settings.stroke1}
                                 onChange={(value) => onSettingChange('stroke1', value)}
-                                resetValue={{ r: 0, g: 122, b: 255, a: 1.0 }}
-                                onReset={() => onSettingChange('stroke1', { r: 0, g: 122, b: 255, a: 1.0 })}
+                                resetValue={{ r: 0, g: 0, b: 0, a: 1.0 }}
+                                onReset={() => onSettingChange('stroke1', { r: 0, g: 0, b: 0, a: 1.0 })}
                             />
                         </Folder>
 
@@ -806,7 +881,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                                 value={settings.frequency2}
                                 min={0}
                                 max={5}
-                                step={1}
+                                step={0.1}
                                 onChange={(value) => onSettingChange('frequency2', value)}
                                 resetValue={1}
                                 onReset={() => onSettingChange('frequency2', 1)}
@@ -827,10 +902,10 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                             />
                             <ColorPicker
                                 label="Stroke Color"
-                                value={settings.stroke2}
+                                value={settings.syncColors2 ? settings.fill2 : settings.stroke2}
                                 onChange={(value) => onSettingChange('stroke2', value)}
-                                resetValue={{ r: 52, g: 199, b: 89, a: 1.0 }}
-                                onReset={() => onSettingChange('stroke2', { r: 52, g: 199, b: 89, a: 1.0 })}
+                                resetValue={{ r: 0, g: 0, b: 0, a: 1.0 }}
+                                onReset={() => onSettingChange('stroke2', { r: 0, g: 0, b: 0, a: 1.0 })}
                             />
                         </Folder>
 
@@ -840,7 +915,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                                 value={settings.frequency3}
                                 min={0}
                                 max={5}
-                                step={1}
+                                step={0.1}
                                 onChange={(value) => onSettingChange('frequency3', value)}
                                 resetValue={1}
                                 onReset={() => onSettingChange('frequency3', 1)}
@@ -861,16 +936,24 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                             />
                             <ColorPicker
                                 label="Stroke Color"
-                                value={settings.stroke3}
+                                value={settings.syncColors3 ? settings.fill3 : settings.stroke3}
                                 onChange={(value) => onSettingChange('stroke3', value)}
-                                resetValue={{ r: 175, g: 82, b: 222, a: 1.0 }}
-                                onReset={() => onSettingChange('stroke3', { r: 175, g: 82, b: 222, a: 1.0 })}
+                                resetValue={{ r: 0, g: 0, b: 0, a: 1.0 }}
+                                onReset={() => onSettingChange('stroke3', { r: 0, g: 0, b: 0, a: 1.0 })}
                             />
                         </Folder>
                     </Folder>
 
                     {/* Camera */}
                     <Folder title="📹 Camera" defaultCollapsed={true}>
+                        <Select
+                            label="Control Type"
+                            value={cameraControlType}
+                            options={{ trackball: 'Trackball', orbit: 'Orbit' }}
+                            onChange={(value) => onCameraControlTypeChange(value as 'trackball' | 'orbit')}
+                            resetValue="orbit"
+                            onReset={() => onCameraControlTypeChange('orbit')}
+                        />
                         <Folder title="Position" defaultCollapsed={false}>
                             <Slider
                                 label="Camera X"

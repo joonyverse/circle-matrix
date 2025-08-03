@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { CheckCircle, AlertCircle, Info, X } from 'lucide-react';
 
 export type ToastType = 'success' | 'error' | 'info' | 'warning';
@@ -12,13 +12,25 @@ interface ToastProps {
 }
 
 const Toast: React.FC<ToastProps> = ({ id, type, message, duration = 3000, onClose }) => {
+    const [isExiting, setIsExiting] = useState(false);
+
     useEffect(() => {
         const timer = setTimeout(() => {
-            onClose(id);
+            setIsExiting(true);
+            setTimeout(() => {
+                onClose(id);
+            }, 300); // 애니메이션 완료 후 제거
         }, duration);
 
         return () => clearTimeout(timer);
     }, [id, duration, onClose]);
+
+    const handleClose = () => {
+        setIsExiting(true);
+        setTimeout(() => {
+            onClose(id);
+        }, 300); // 애니메이션 완료 후 제거
+    };
 
     const getIcon = () => {
         switch (type) {
@@ -52,12 +64,12 @@ const Toast: React.FC<ToastProps> = ({ id, type, message, duration = 3000, onClo
 
     return (
         <div
-            className={`glass-strong rounded-xl border p-4 shadow-lg flex items-center gap-3 animate-slide-in ${getBackgroundColor()}`}
+            className={`glass-strong rounded-xl border p-4 shadow-lg flex items-center gap-3 ${isExiting ? 'animate-slide-out' : 'animate-slide-in'} ${getBackgroundColor()}`}
         >
             {getIcon()}
             <div className="text-sm font-medium text-[#333] flex-1 break-all whitespace-pre-line">{message}</div>
             <button
-                onClick={() => onClose(id)}
+                onClick={handleClose}
                 className="text-[#666] hover:text-[#333] smooth-transition p-1 rounded-lg hover:bg-white/20"
             >
                 <X className="w-4 h-4" />
@@ -103,7 +115,7 @@ export const useToast = () => {
     }>>([]);
 
     const addToast = (type: ToastType, message: string, duration?: number) => {
-        const id = Date.now().toString();
+        const id = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         setToasts(prev => [...prev, { id, type, message, duration }]);
     };
 
