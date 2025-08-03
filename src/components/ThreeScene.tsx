@@ -1,15 +1,15 @@
 import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { TrackballControls } from 'three-stdlib';
-import * as dat from 'dat.gui';
-import { CircleData, GuiControls, CircleGridConfig, ShapeType } from '../types';
+import { useControls, button, folder } from 'leva';
+import { CircleData, CircleGridConfig, ShapeType } from '../types';
+import './leva.css';
 import {
   createShapeGeometry,
   createShapeStrokeGeometry,
   generateCirclePositions,
   assignColorGroups,
-  applyCylindricalTransform,
-  applyAxisRotations
+  applyCylindricalTransform
 } from '../utils/circleGeometry';
 
 const ThreeScene: React.FC = () => {
@@ -19,119 +19,352 @@ const ThreeScene: React.FC = () => {
   const cameraRef = useRef<THREE.PerspectiveCamera>();
   const controlsRef = useRef<TrackballControls | null>(null);
   const circlesRef = useRef<CircleData[]>([]);
-  const guiRef = useRef<dat.GUI>();
   const animationIdRef = useRef<number>();
 
   // localStorage 키
-  const STORAGE_KEY = 'circle-matrix-color-settings';
+  const STORAGE_KEY = 'circle-matrix-settings';
 
-  // 색상 설정 저장
-  const saveColorSettings = () => {
-    const colorSettings = {
-      colorGroup1: controls.colorGroup1,
-      colorGroup2: controls.colorGroup2,
-      colorGroup3: controls.colorGroup3
+  // 랜덤 시드 관리
+  const colorSeedRef = useRef<number>(Math.floor(Math.random() * 1000000));
+
+  // 기본값 정의
+  const getDefaultValues = () => {
+    const defaults = {
+      // Structure
+      rows: 3,
+      cols: 12,
+      rowSpacing: 2,
+      colSpacing: 2,
+      shapeType: ShapeType.Circle,
+      circleRadius: 0.8,
+      rectangleWidth: 1.6,
+      rectangleHeight: 1.2,
+      enableWidthScaling: false,
+      widthScaleFactor: 2.0,
+      borderThickness: 0.15,
+
+      // Transforms
+      cylinderAxis: 'y' as const,
+      cylinderCurvature: 0,
+      cylinderRadius: 8,
+      objectPositionX: 0,
+      objectPositionY: 0,
+      objectPositionZ: 0,
+      rotationX: 0,
+      rotationY: 0,
+      rotationZ: 0,
+
+      // Appearance
+      backgroundColor: '#1a1a2e',
+      frequency1: 1,
+      syncColors1: false,
+      fill1: { r: 255, g: 107, b: 107, a: 1.0 },
+      stroke1: { r: 255, g: 82, b: 82, a: 1.0 },
+      frequency2: 1,
+      syncColors2: false,
+      fill2: { r: 78, g: 205, b: 196, a: 1.0 },
+      stroke2: { r: 38, g: 166, b: 154, a: 1.0 },
+      frequency3: 1,
+      syncColors3: false,
+      fill3: { r: 69, g: 183, b: 209, a: 1.0 },
+      stroke3: { r: 33, g: 150, b: 243, a: 1.0 },
+
+      // Camera
+      cameraPositionX: 0,
+      cameraPositionY: 0,
+      cameraPositionZ: 15,
+      cameraMinDistance: 5,
+      cameraMaxDistance: 50,
+      cameraEnablePan: true
     };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(colorSettings));
-  };
 
-  // 색상 설정 로드
-  const loadColorSettings = () => {
+    // localStorage에서 저장된 값이 있으면 로드
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
-        const colorSettings = JSON.parse(saved);
+        const settings = JSON.parse(saved);
 
-        // 저장된 설정이 있으면 적용
-        if (colorSettings.colorGroup1) {
-          Object.assign(controls.colorGroup1, colorSettings.colorGroup1);
+        // 저장된 색상 시드가 있으면 적용
+        if (settings.colorSeed !== undefined) {
+          colorSeedRef.current = settings.colorSeed;
         }
-        if (colorSettings.colorGroup2) {
-          Object.assign(controls.colorGroup2, colorSettings.colorGroup2);
+
+        // 저장된 값들을 기본값과 병합
+        return { ...defaults, ...settings };
+      }
+    } catch (error) {
+      console.warn('Failed to load settings from localStorage:', error);
+    }
+
+    return defaults;
+  };
+
+  const initialValues = getDefaultValues();
+
+
+  // Leva 컨트롤 정의
+  const controls = useControls({
+    // ⚙️ Quick Actions
+    'Reset Camera': button(() => resetCameraPosition()),
+    'Regenerate Colors': button(() => {
+      colorSeedRef.current = Math.floor(Math.random() * 1000000);
+      createCircles();
+      saveSettings();
+    }),
+
+    // 📐 Structure
+    Structure: folder({
+      'Grid Layout': folder({
+        'Reset Grid': button(() => {
+          // Reset grid layout values by clearing from localStorage and reloading
+          const saved = localStorage.getItem('circle-matrix-settings');
+          if (saved) {
+            const settings = JSON.parse(saved);
+            const defaultValues = getDefaultValues();
+            const updatedSettings = {
+              ...settings,
+              rows: defaultValues.rows,
+              cols: defaultValues.cols,
+              rowSpacing: defaultValues.rowSpacing,
+              colSpacing: defaultValues.colSpacing
+            };
+            localStorage.setItem('circle-matrix-settings', JSON.stringify(updatedSettings));
+            window.location.reload();
+          }
+        }),
+        rows: { value: initialValues.rows, min: 1, max: 50, step: 1 },
+        cols: { value: initialValues.cols, min: 1, max: 100, step: 1 },
+        rowSpacing: { value: initialValues.rowSpacing, min: 0.1, max: 20 },
+        colSpacing: { value: initialValues.colSpacing, min: 0.1, max: 20 }
+      }, { collapsed: false }),
+      'Shape Settings': folder({
+        'Reset Shape': button(() => {
+          const saved = localStorage.getItem('circle-matrix-settings');
+          if (saved) {
+            const settings = JSON.parse(saved);
+            const defaultValues = getDefaultValues();
+            const updatedSettings = {
+              ...settings,
+              shapeType: defaultValues.shapeType,
+              circleRadius: defaultValues.circleRadius,
+              rectangleWidth: defaultValues.rectangleWidth,
+              rectangleHeight: defaultValues.rectangleHeight,
+              enableWidthScaling: defaultValues.enableWidthScaling,
+              widthScaleFactor: defaultValues.widthScaleFactor,
+              borderThickness: defaultValues.borderThickness
+            };
+            localStorage.setItem('circle-matrix-settings', JSON.stringify(updatedSettings));
+            window.location.reload();
+          }
+        }),
+        shapeType: { value: initialValues.shapeType, options: { Circle: ShapeType.Circle, Rectangle: ShapeType.Rectangle } },
+        circleRadius: { value: initialValues.circleRadius, min: 0.1, max: 12 },
+        rectangleWidth: { value: initialValues.rectangleWidth, min: 0.2, max: 12 },
+        rectangleHeight: { value: initialValues.rectangleHeight, min: 0.2, max: 12 },
+        enableWidthScaling: initialValues.enableWidthScaling,
+        widthScaleFactor: { value: initialValues.widthScaleFactor, min: 1.0, max: 10.0 }
+      }, { collapsed: false }),
+      borderThickness: { value: initialValues.borderThickness, min: 0.05, max: 0.5 }
+    }, { collapsed: true }),
+
+    // 🔄 Transforms
+    Transforms: folder({
+      'Cylinder Roll': folder({
+        'Reset Cylinder': button(() => {
+          const saved = localStorage.getItem('circle-matrix-settings');
+          if (saved) {
+            const settings = JSON.parse(saved);
+            const defaultValues = getDefaultValues();
+            const updatedSettings = {
+              ...settings,
+              cylinderAxis: defaultValues.cylinderAxis,
+              cylinderCurvature: defaultValues.cylinderCurvature,
+              cylinderRadius: defaultValues.cylinderRadius
+            };
+            localStorage.setItem('circle-matrix-settings', JSON.stringify(updatedSettings));
+            window.location.reload();
+          }
+        }),
+        cylinderAxis: { value: initialValues.cylinderAxis, options: { 'Y-Axis (Horizontal)': 'y', 'X-Axis (Vertical)': 'x' } },
+        cylinderCurvature: { value: initialValues.cylinderCurvature, min: 0, max: 1 },
+        cylinderRadius: { value: initialValues.cylinderRadius, min: 2, max: 20 }
+      }, { collapsed: false }),
+      'Object Transform': folder({
+        'Reset Transform': button(() => {
+          const saved = localStorage.getItem('circle-matrix-settings');
+          if (saved) {
+            const settings = JSON.parse(saved);
+            const defaultValues = getDefaultValues();
+            const updatedSettings = {
+              ...settings,
+              objectPositionX: defaultValues.objectPositionX,
+              objectPositionY: defaultValues.objectPositionY,
+              objectPositionZ: defaultValues.objectPositionZ,
+              rotationX: defaultValues.rotationX,
+              rotationY: defaultValues.rotationY,
+              rotationZ: defaultValues.rotationZ
+            };
+            localStorage.setItem('circle-matrix-settings', JSON.stringify(updatedSettings));
+            window.location.reload();
+          }
+        }),
+        Position: folder({
+          objectPositionX: { value: initialValues.objectPositionX, min: -20, max: 20 },
+          objectPositionY: { value: initialValues.objectPositionY, min: -20, max: 20 },
+          objectPositionZ: { value: initialValues.objectPositionZ, min: -20, max: 20 }
+        }, { collapsed: false }),
+        Rotation: folder({
+          rotationX: { value: initialValues.rotationX, min: -Math.PI, max: Math.PI },
+          rotationY: { value: initialValues.rotationY, min: -Math.PI, max: Math.PI },
+          rotationZ: { value: initialValues.rotationZ, min: -Math.PI, max: Math.PI }
+        }, { collapsed: false })
+      }, { collapsed: false })
+    }, { collapsed: true }),
+
+    // 🎨 Appearance
+    Appearance: folder({
+      backgroundColor: initialValues.backgroundColor,
+      'Color Group 1': folder({
+        'Reset Group 1': button(() => {
+          const saved = localStorage.getItem('circle-matrix-settings');
+          if (saved) {
+            const settings = JSON.parse(saved);
+            const defaultValues = getDefaultValues();
+            const updatedSettings = {
+              ...settings,
+              frequency1: defaultValues.frequency1,
+              syncColors1: defaultValues.syncColors1,
+              fill1: defaultValues.fill1,
+              stroke1: defaultValues.stroke1
+            };
+            localStorage.setItem('circle-matrix-settings', JSON.stringify(updatedSettings));
+            window.location.reload();
+          }
+        }),
+        frequency1: { value: initialValues.frequency1, min: 0, max: 5 },
+        syncColors1: initialValues.syncColors1,
+        fill1: initialValues.fill1,
+        stroke1: initialValues.stroke1
+      }, { collapsed: false }),
+      'Color Group 2': folder({
+        'Reset Group 2': button(() => {
+          const saved = localStorage.getItem('circle-matrix-settings');
+          if (saved) {
+            const settings = JSON.parse(saved);
+            const defaultValues = getDefaultValues();
+            const updatedSettings = {
+              ...settings,
+              frequency2: defaultValues.frequency2,
+              syncColors2: defaultValues.syncColors2,
+              fill2: defaultValues.fill2,
+              stroke2: defaultValues.stroke2
+            };
+            localStorage.setItem('circle-matrix-settings', JSON.stringify(updatedSettings));
+            window.location.reload();
+          }
+        }),
+        frequency2: { value: initialValues.frequency2, min: 0, max: 5 },
+        syncColors2: initialValues.syncColors2,
+        fill2: initialValues.fill2,
+        stroke2: initialValues.stroke2
+      }, { collapsed: false }),
+      'Color Group 3': folder({
+        'Reset Group 3': button(() => {
+          const saved = localStorage.getItem('circle-matrix-settings');
+          if (saved) {
+            const settings = JSON.parse(saved);
+            const defaultValues = getDefaultValues();
+            const updatedSettings = {
+              ...settings,
+              frequency3: defaultValues.frequency3,
+              syncColors3: defaultValues.syncColors3,
+              fill3: defaultValues.fill3,
+              stroke3: defaultValues.stroke3
+            };
+            localStorage.setItem('circle-matrix-settings', JSON.stringify(updatedSettings));
+            window.location.reload();
+          }
+        }),
+        frequency3: { value: initialValues.frequency3, min: 0, max: 5 },
+        syncColors3: initialValues.syncColors3,
+        fill3: initialValues.fill3,
+        stroke3: initialValues.stroke3
+      }, { collapsed: false })
+    }, { collapsed: true }),
+
+    // 📹 Camera
+    Camera: folder({
+      'Reset Camera Settings': button(() => {
+        const saved = localStorage.getItem('circle-matrix-settings');
+        if (saved) {
+          const settings = JSON.parse(saved);
+          const defaultValues = getDefaultValues();
+          const updatedSettings = {
+            ...settings,
+            cameraPositionX: defaultValues.cameraPositionX,
+            cameraPositionY: defaultValues.cameraPositionY,
+            cameraPositionZ: defaultValues.cameraPositionZ,
+            cameraMinDistance: defaultValues.cameraMinDistance,
+            cameraMaxDistance: defaultValues.cameraMaxDistance,
+            cameraEnablePan: defaultValues.cameraEnablePan
+          };
+          localStorage.setItem('circle-matrix-settings', JSON.stringify(updatedSettings));
+          window.location.reload();
         }
-        if (colorSettings.colorGroup3) {
-          Object.assign(controls.colorGroup3, colorSettings.colorGroup3);
+      }),
+      Position: folder({
+        cameraPositionX: { value: initialValues.cameraPositionX, min: -50, max: 50 },
+        cameraPositionY: { value: initialValues.cameraPositionY, min: -50, max: 50 },
+        cameraPositionZ: { value: initialValues.cameraPositionZ, min: -50, max: 50 }
+      }, { collapsed: false }),
+      Settings: folder({
+        cameraMinDistance: { value: initialValues.cameraMinDistance, min: 1, max: 20 },
+        cameraMaxDistance: { value: initialValues.cameraMaxDistance, min: 20, max: 200 },
+        cameraEnablePan: initialValues.cameraEnablePan
+      }, { collapsed: false })
+    }, { collapsed: true })
+  });
+
+  // RGBA 색상을 CSS 색상 문자열로 변환
+  const rgbaToColor = (rgba: { r: number; g: number; b: number; a: number }) => {
+    return `rgba(${rgba.r}, ${rgba.g}, ${rgba.b}, ${rgba.a})`;
+  };
+
+  // 모든 설정 저장
+  const saveSettings = () => {
+    const settings = {
+      ...controls,
+      colorSeed: colorSeedRef.current
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+  };
+
+  // 모든 설정 로드
+  const loadSettings = () => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const settings = JSON.parse(saved);
+
+        // 저장된 색상 시드가 있으면 적용
+        if (settings.colorSeed !== undefined) {
+          colorSeedRef.current = settings.colorSeed;
         }
       }
     } catch (error) {
-      console.warn('Failed to load color settings from localStorage:', error);
+      console.warn('Failed to load settings from localStorage:', error);
     }
   };
 
   const config: CircleGridConfig = {
-    rows: 3,
-    cols: 12,
-    shapeType: ShapeType.Circle,
-    circleRadius: 0.8,
-    rectangleWidth: 1.6,
-    rectangleHeight: 1.2,
-    rowSpacing: 2,
-    colSpacing: 2
-  };
-
-  const controls: GuiControls = {
-    backgroundColor: '#1a1a2e',
-    cylinderCurvature: 0,
-    cylinderRadius: 8,
-    cylinderAxis: 'y' as const,
-    borderThickness: 0.15,
-    shapeType: ShapeType.Circle,
-    circleRadius: 0.8,
-    rectangleWidth: 1.6,
-    rectangleHeight: 1.2,
-    enableWidthScaling: false,
-    widthScaleFactor: 2.0,
-    rows: 3,
-    cols: 12,
-    rowSpacing: 2,
-    colSpacing: 2,
-    rotationX: 0,
-    rotationY: 0,
-    rotationZ: 0,
-    cameraMinDistance: 5,
-    cameraMaxDistance: 50,
-    cameraEnablePan: true,
-    cameraPositionX: 0,
-    cameraPositionY: 0,
-    cameraPositionZ: 15,
-    cameraRotationX: 0,
-    cameraRotationY: 0,
-    cameraRotationZ: 0,
-    objectPositionX: 0,
-    objectPositionY: 0,
-    objectPositionZ: 0,
-    objectRotationX: 0,
-    objectRotationY: 0,
-    objectRotationZ: 0,
-    colorGroup1: {
-      fill: '#ff6b6b',
-      stroke: '#ff5252',
-      originalStroke: '#ff5252',
-      fillOpacity: 1.0,
-      strokeOpacity: 1.0,
-      frequency: 1,
-      syncColors: false
-    },
-    colorGroup2: {
-      fill: '#4ecdc4',
-      stroke: '#26a69a',
-      originalStroke: '#26a69a',
-      fillOpacity: 1.0,
-      strokeOpacity: 1.0,
-      frequency: 1,
-      syncColors: false
-    },
-    colorGroup3: {
-      fill: '#45b7d1',
-      stroke: '#2196f3',
-      originalStroke: '#2196f3',
-      fillOpacity: 1.0,
-      strokeOpacity: 1.0,
-      frequency: 1,
-      syncColors: false
-    },
-    regenerateColors: () => { },
-    resetCamera: () => { }
+    rows: controls.rows,
+    cols: controls.cols,
+    shapeType: controls.shapeType,
+    circleRadius: controls.circleRadius,
+    rectangleWidth: controls.rectangleWidth,
+    rectangleHeight: controls.rectangleHeight,
+    rowSpacing: controls.rowSpacing,
+    colSpacing: controls.colSpacing
   };
 
   const initScene = () => {
@@ -147,7 +380,11 @@ const ThreeScene: React.FC = () => {
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setClearColor(controls.backgroundColor);
 
-    camera.position.set(0, 0, 15);
+    camera.position.set(
+      controls.cameraPositionX,
+      controls.cameraPositionY,
+      controls.cameraPositionZ
+    );
 
     sceneRef.current = scene;
     rendererRef.current = renderer;
@@ -157,14 +394,13 @@ const ThreeScene: React.FC = () => {
       mountRef.current.appendChild(renderer.domElement);
     }
 
-    // 카메라 컨트롤 설정 (TrackballControls만 사용)
+    // 카메라 컨트롤 설정
     const trackballControls = new TrackballControls(camera, renderer.domElement);
     trackballControls.minDistance = controls.cameraMinDistance;
     trackballControls.maxDistance = controls.cameraMaxDistance;
     trackballControls.noPan = !controls.cameraEnablePan;
-    const cameraControls = trackballControls;
 
-    controlsRef.current = cameraControls;
+    controlsRef.current = trackballControls;
   };
 
   const createCircles = () => {
@@ -178,37 +414,26 @@ const ThreeScene: React.FC = () => {
     });
 
     // 새로운 도형들 생성
-    const currentConfig = {
-      ...config,
-      rows: controls.rows,
-      cols: controls.cols,
-      shapeType: controls.shapeType,
-      circleRadius: controls.circleRadius,
-      rectangleWidth: controls.rectangleWidth,
-      rectangleHeight: controls.rectangleHeight,
-      rowSpacing: controls.rowSpacing,
-      colSpacing: controls.colSpacing
-    };
-    const circles = generateCirclePositions(currentConfig);
+    const circles = generateCirclePositions(config);
     assignColorGroups(circles, [
-      controls.colorGroup1.frequency,
-      controls.colorGroup2.frequency,
-      controls.colorGroup3.frequency
-    ]);
+      controls.frequency1,
+      controls.frequency2,
+      controls.frequency3
+    ], colorSeedRef.current);
 
     circles.forEach(circle => {
       const group = new THREE.Group();
 
       // Create geometry with variable width for this specific circle
       const fillGeometry = createShapeGeometry(
-        currentConfig,
+        config,
         circle.columnIndex,
         controls.enableWidthScaling,
         controls.widthScaleFactor
       );
 
       const strokeGeometry = createShapeStrokeGeometry(
-        currentConfig,
+        config,
         controls.borderThickness,
         circle.columnIndex,
         controls.enableWidthScaling,
@@ -216,43 +441,31 @@ const ThreeScene: React.FC = () => {
       );
 
       // 색상 그룹에 따른 재료 선택
-      let fillColor, strokeColor;
+      let fillColor, strokeColor, fillOpacity, strokeOpacity;
       switch (circle.colorGroup) {
         case 0:
-          fillColor = controls.colorGroup1.fill;
-          strokeColor = controls.colorGroup1.syncColors ? controls.colorGroup1.fill : controls.colorGroup1.stroke;
+          fillColor = rgbaToColor(controls.fill1);
+          strokeColor = controls.syncColors1 ? rgbaToColor(controls.fill1) : rgbaToColor(controls.stroke1);
+          fillOpacity = controls.fill1.a;
+          strokeOpacity = controls.stroke1.a;
           break;
         case 1:
-          fillColor = controls.colorGroup2.fill;
-          strokeColor = controls.colorGroup2.syncColors ? controls.colorGroup2.fill : controls.colorGroup2.stroke;
+          fillColor = rgbaToColor(controls.fill2);
+          strokeColor = controls.syncColors2 ? rgbaToColor(controls.fill2) : rgbaToColor(controls.stroke2);
+          fillOpacity = controls.fill2.a;
+          strokeOpacity = controls.stroke2.a;
           break;
         case 2:
-          fillColor = controls.colorGroup3.fill;
-          strokeColor = controls.colorGroup3.syncColors ? controls.colorGroup3.fill : controls.colorGroup3.stroke;
+          fillColor = rgbaToColor(controls.fill3);
+          strokeColor = controls.syncColors3 ? rgbaToColor(controls.fill3) : rgbaToColor(controls.stroke3);
+          fillOpacity = controls.fill3.a;
+          strokeOpacity = controls.stroke3.a;
           break;
         default:
-          fillColor = controls.colorGroup1.fill;
-          strokeColor = controls.colorGroup1.syncColors ? controls.colorGroup1.fill : controls.colorGroup1.stroke;
-      }
-
-      // 투명도 설정
-      let fillOpacity, strokeOpacity;
-      switch (circle.colorGroup) {
-        case 0:
-          fillOpacity = controls.colorGroup1.fillOpacity;
-          strokeOpacity = controls.colorGroup1.strokeOpacity;
-          break;
-        case 1:
-          fillOpacity = controls.colorGroup2.fillOpacity;
-          strokeOpacity = controls.colorGroup2.strokeOpacity;
-          break;
-        case 2:
-          fillOpacity = controls.colorGroup3.fillOpacity;
-          strokeOpacity = controls.colorGroup3.strokeOpacity;
-          break;
-        default:
-          fillOpacity = controls.colorGroup1.fillOpacity;
-          strokeOpacity = controls.colorGroup1.strokeOpacity;
+          fillColor = rgbaToColor(controls.fill1);
+          strokeColor = controls.syncColors1 ? rgbaToColor(controls.fill1) : rgbaToColor(controls.stroke1);
+          fillOpacity = controls.fill1.a;
+          strokeOpacity = controls.stroke1.a;
       }
 
       // 채우기
@@ -283,478 +496,54 @@ const ThreeScene: React.FC = () => {
     });
 
     circlesRef.current = circles;
-    applyCylindricalTransform(circles, controls.cylinderCurvature, controls.cylinderRadius, currentConfig, controls.cylinderAxis, controls.rotationY);
-    applyAxisRotations(circles, controls.rotationX, controls.rotationZ);
+    updateTransforms();
   };
 
-  const updateColors = () => {
-    circlesRef.current.forEach(circle => {
-      if (!circle.mesh) return;
-
-      let fillColor, strokeColor;
-      switch (circle.colorGroup) {
-        case 0:
-          fillColor = controls.colorGroup1.fill;
-          strokeColor = controls.colorGroup1.syncColors ? controls.colorGroup1.fill : controls.colorGroup1.stroke;
-          break;
-        case 1:
-          fillColor = controls.colorGroup2.fill;
-          strokeColor = controls.colorGroup2.syncColors ? controls.colorGroup2.fill : controls.colorGroup2.stroke;
-          break;
-        case 2:
-          fillColor = controls.colorGroup3.fill;
-          strokeColor = controls.colorGroup3.syncColors ? controls.colorGroup3.fill : controls.colorGroup3.stroke;
-          break;
-        default:
-          fillColor = controls.colorGroup1.fill;
-          strokeColor = controls.colorGroup1.syncColors ? controls.colorGroup1.fill : controls.colorGroup1.stroke;
-      }
-
-      // 투명도 설정
-      let fillOpacity, strokeOpacity;
-      switch (circle.colorGroup) {
-        case 0:
-          fillOpacity = controls.colorGroup1.fillOpacity;
-          strokeOpacity = controls.colorGroup1.strokeOpacity;
-          break;
-        case 1:
-          fillOpacity = controls.colorGroup2.fillOpacity;
-          strokeOpacity = controls.colorGroup2.strokeOpacity;
-          break;
-        case 2:
-          fillOpacity = controls.colorGroup3.fillOpacity;
-          strokeOpacity = controls.colorGroup3.strokeOpacity;
-          break;
-        default:
-          fillOpacity = controls.colorGroup1.fillOpacity;
-          strokeOpacity = controls.colorGroup1.strokeOpacity;
-      }
-
-      const fillMesh = circle.mesh.children[0] as THREE.Mesh;
-      const strokeMesh = circle.mesh.children[1] as THREE.Mesh;
-
-      const fillMaterial = fillMesh.material as THREE.MeshBasicMaterial;
-      const strokeMaterial = strokeMesh.material as THREE.MeshBasicMaterial;
-
-      fillMaterial.color.set(fillColor);
-      fillMaterial.transparent = fillOpacity < 1.0;
-      fillMaterial.opacity = fillOpacity;
-
-      strokeMaterial.color.set(strokeColor);
-      strokeMaterial.transparent = strokeOpacity < 1.0;
-      strokeMaterial.opacity = strokeOpacity;
-    });
-  };
-
-  const updateBorderThickness = () => {
-    const currentConfig = {
-      ...config,
-      rows: controls.rows,
-      cols: controls.cols,
-      shapeType: controls.shapeType,
-      circleRadius: controls.circleRadius,
-      rectangleWidth: controls.rectangleWidth,
-      rectangleHeight: controls.rectangleHeight,
-      rowSpacing: controls.rowSpacing,
-      colSpacing: controls.colSpacing
-    };
-
-    circlesRef.current.forEach(circle => {
-      if (!circle.mesh) return;
-
-      const strokeMesh = circle.mesh.children[1] as THREE.Mesh;
-      const newStrokeGeometry = createShapeStrokeGeometry(
-        currentConfig,
-        controls.borderThickness,
-        circle.columnIndex,
-        controls.enableWidthScaling,
-        controls.widthScaleFactor
-      );
-
-      strokeMesh.geometry.dispose();
-      strokeMesh.geometry = newStrokeGeometry;
-    });
-  };
-
-  const updateShapeSize = () => {
-    const currentConfig = {
-      ...config,
-      rows: controls.rows,
-      cols: controls.cols,
-      shapeType: controls.shapeType,
-      circleRadius: controls.circleRadius,
-      rectangleWidth: controls.rectangleWidth,
-      rectangleHeight: controls.rectangleHeight,
-      rowSpacing: controls.rowSpacing,
-      colSpacing: controls.colSpacing
-    };
-
-    circlesRef.current.forEach(circle => {
-      if (!circle.mesh) return;
-
-      // 채우기 기하학 업데이트
-      const fillMesh = circle.mesh.children[0] as THREE.Mesh;
-      const newFillGeometry = createShapeGeometry(
-        currentConfig,
-        circle.columnIndex,
-        controls.enableWidthScaling,
-        controls.widthScaleFactor
-      );
-      fillMesh.geometry.dispose();
-      fillMesh.geometry = newFillGeometry;
-
-      // 테두리 기하학 업데이트
-      const strokeMesh = circle.mesh.children[1] as THREE.Mesh;
-      const newStrokeGeometry = createShapeStrokeGeometry(
-        currentConfig,
-        controls.borderThickness,
-        circle.columnIndex,
-        controls.enableWidthScaling,
-        controls.widthScaleFactor
-      );
-      strokeMesh.geometry.dispose();
-      strokeMesh.geometry = newStrokeGeometry;
-    });
-  };
-
-  const updateCylindricalTransform = () => {
-    const currentConfig = {
-      ...config,
-      rows: controls.rows,
-      cols: controls.cols,
-      shapeType: controls.shapeType,
-      circleRadius: controls.circleRadius,
-      rectangleWidth: controls.rectangleWidth,
-      rectangleHeight: controls.rectangleHeight,
-      rowSpacing: controls.rowSpacing,
-      colSpacing: controls.colSpacing
-    };
+  const updateTransforms = () => {
+    // Apply cylindrical transform first
     applyCylindricalTransform(
       circlesRef.current,
       controls.cylinderCurvature,
       controls.cylinderRadius,
-      currentConfig,
+      config,
       controls.cylinderAxis,
       controls.rotationY
     );
-    applyAxisRotations(circlesRef.current, controls.rotationX, controls.rotationZ);
-  };
 
-  const updateAxisRotations = () => {
-    const currentConfig = {
-      ...config,
-      rows: controls.rows,
-      cols: controls.cols,
-      shapeType: controls.shapeType,
-      circleRadius: controls.circleRadius,
-      rectangleWidth: controls.rectangleWidth,
-      rectangleHeight: controls.rectangleHeight,
-      rowSpacing: controls.rowSpacing,
-      colSpacing: controls.colSpacing
-    };
-    applyCylindricalTransform(
-      circlesRef.current,
-      controls.cylinderCurvature,
-      controls.cylinderRadius,
-      currentConfig,
-      controls.cylinderAxis,
-      controls.rotationY
-    );
-    applyAxisRotations(circlesRef.current, controls.rotationX, controls.rotationZ);
-  };
-
-  const updateCameraControls = () => {
-    if (!controlsRef.current) return;
-
-    controlsRef.current.minDistance = controls.cameraMinDistance;
-    controlsRef.current.maxDistance = controls.cameraMaxDistance;
-
-    if (controlsRef.current instanceof TrackballControls) {
-      controlsRef.current.noPan = !controls.cameraEnablePan;
-      // TrackballControls는 자동 회전 기능이 없음
-    }
-  };
-
-  const updateCameraPosition = () => {
-    if (!cameraRef.current) return;
-    
-    cameraRef.current.position.set(
-      controls.cameraPositionX,
-      controls.cameraPositionY,
-      controls.cameraPositionZ
-    );
-  };
-
-  const updateCameraRotation = () => {
-    if (!cameraRef.current) return;
-    
-    cameraRef.current.rotation.set(
-      controls.cameraRotationX,
-      controls.cameraRotationY,
-      controls.cameraRotationZ
-    );
-  };
-
-  const updateObjectTransform = () => {
+    // Then apply object rotations and positions
     circlesRef.current.forEach(circle => {
       if (!circle.mesh) return;
-      
-      // 원래 위치에서 오프셋 적용
-      const originalPos = circle.mesh.userData.originalPosition || circle.position;
+
+      // 원래 위치에서 오프셋 적용 (cylindrical transform 후)
+      const currentPos = circle.mesh.position;
       circle.mesh.position.set(
-        originalPos.x + controls.objectPositionX,
-        originalPos.y + controls.objectPositionY,
-        originalPos.z + controls.objectPositionZ
+        currentPos.x + controls.objectPositionX,
+        currentPos.y + controls.objectPositionY,
+        currentPos.z + controls.objectPositionZ
       );
-      
+
+      // 통합된 rotation 적용
       circle.mesh.rotation.set(
-        controls.objectRotationX,
-        controls.objectRotationY,
-        controls.objectRotationZ
+        controls.rotationX,
+        controls.rotationY,
+        controls.rotationZ
       );
     });
   };
 
   const resetCameraPosition = () => {
     if (!cameraRef.current || !controlsRef.current) return;
-    
-    // 컨트롤 값들을 초기화
-    controls.cameraPositionX = 0;
-    controls.cameraPositionY = 0;
-    controls.cameraPositionZ = 15;
-    controls.cameraRotationX = 0;
-    controls.cameraRotationY = 0;
-    controls.cameraRotationZ = 0;
-    
+
     // 카메라를 초기 위치로 이동
     cameraRef.current.position.set(0, 0, 15);
-    cameraRef.current.rotation.set(0, 0, 0);
     cameraRef.current.lookAt(0, 0, 0);
-    
+
     // 컨트롤 대상 위치도 초기화
     if (controlsRef.current instanceof TrackballControls) {
       controlsRef.current.target.set(0, 0, 0);
       controlsRef.current.reset();
       controlsRef.current.update();
     }
-    
-    // GUI 컨트롤들도 업데이트
-    if (guiRef.current) {
-      guiRef.current.updateDisplay();
-    }
-  };
-
-  const initGUI = () => {
-    if (guiRef.current) {
-      guiRef.current.destroy();
-      guiRef.current = null;
-    }
-
-    const gui = new dat.GUI();
-    guiRef.current = gui;
-
-    // 배경색
-    gui.addColor(controls, 'backgroundColor').onChange((value: string) => {
-      if (rendererRef.current) {
-        rendererRef.current.setClearColor(value);
-      }
-    });
-
-    // 원통 변형
-    const cylinderFolder = gui.addFolder('Cylinder Transform');
-    cylinderFolder.add(controls, 'cylinderAxis', {
-      'Y-Axis (Horizontal Roll)': 'y',
-      'X-Axis (Vertical Roll)': 'x'
-    }).name('Cylinder Axis').onChange(updateCylindricalTransform);
-    cylinderFolder.add(controls, 'cylinderCurvature', 0, 1).name('Curvature').onChange(updateCylindricalTransform);
-    cylinderFolder.add(controls, 'cylinderRadius', 2, 20).name('Radius').onChange(updateCylindricalTransform);
-    cylinderFolder.open();
-
-    // 격자 설정
-    const gridFolder = gui.addFolder('Grid Settings');
-    gridFolder.add(controls, 'rows', 1, 50).step(1).name('Rows').onChange(createCircles);
-    gridFolder.add(controls, 'cols', 1, 100).step(1).name('Columns').onChange(createCircles);
-    gridFolder.add(controls, 'rowSpacing', 0.1, 20).name('Row Spacing').onChange(createCircles);
-    gridFolder.add(controls, 'colSpacing', 0.1, 20).name('Column Spacing').onChange(createCircles);
-    gridFolder.open();
-
-    // 도형 설정
-    const shapeFolder = gui.addFolder('Shape Settings');
-    shapeFolder.add(controls, 'shapeType', {
-      'Circle': ShapeType.Circle,
-      'Rectangle': ShapeType.Rectangle
-    }).name('Shape Type').onChange(createCircles);
-    shapeFolder.add(controls, 'circleRadius', 0.1, 3).name('Circle Radius').onChange(updateShapeSize);
-    shapeFolder.add(controls, 'rectangleWidth', 0.2, 4).name('Rectangle Width').onChange(updateShapeSize);
-    shapeFolder.add(controls, 'rectangleHeight', 0.2, 4).name('Rectangle Height').onChange(updateShapeSize);
-    shapeFolder.add(controls, 'enableWidthScaling').name('Enable Width Scaling').onChange(updateShapeSize);
-    shapeFolder.add(controls, 'widthScaleFactor', 1.0, 5.0).name('Width Scale Factor').onChange(updateShapeSize);
-    shapeFolder.open();
-
-
-    // 테두리 두께
-    gui.add(controls, 'borderThickness', 0.05, 0.5).name('Border Thickness').onChange(updateBorderThickness);
-
-    // 축 회전
-    const rotationFolder = gui.addFolder('Axis Rotations');
-    rotationFolder.add(controls, 'rotationX', -Math.PI, Math.PI).name('Rotation X').onChange(updateAxisRotations);
-    rotationFolder.add(controls, 'rotationY', -Math.PI, Math.PI).name('Rotation Y').onChange(updateAxisRotations);
-    rotationFolder.add(controls, 'rotationZ', -Math.PI, Math.PI).name('Rotation Z').onChange(updateAxisRotations);
-    rotationFolder.open();
-
-    // 색상 그룹 1
-    const group1 = gui.addFolder('Color Group 1');
-    group1.add(controls.colorGroup1, 'syncColors').name('Sync Fill & Stroke').onChange(() => {
-      if (controls.colorGroup1.syncColors) {
-        controls.colorGroup1.stroke = controls.colorGroup1.fill;
-      } else {
-        controls.colorGroup1.stroke = controls.colorGroup1.originalStroke;
-      }
-      updateColors();
-      saveColorSettings();
-    });
-    group1.addColor(controls.colorGroup1, 'fill').onChange(() => {
-      if (controls.colorGroup1.syncColors) {
-        controls.colorGroup1.stroke = controls.colorGroup1.fill;
-      }
-      updateColors();
-      saveColorSettings();
-    });
-    group1.addColor(controls.colorGroup1, 'stroke').onChange(() => {
-      if (!controls.colorGroup1.syncColors) {
-        controls.colorGroup1.originalStroke = controls.colorGroup1.stroke;
-        updateColors();
-      }
-      saveColorSettings();
-    });
-    group1.add(controls.colorGroup1, 'fillOpacity', 0, 1).name('Fill Opacity').onChange(() => {
-      updateColors();
-      saveColorSettings();
-    });
-    group1.add(controls.colorGroup1, 'strokeOpacity', 0, 1).name('Stroke Opacity').onChange(() => {
-      updateColors();
-      saveColorSettings();
-    });
-    group1.add(controls.colorGroup1, 'frequency', 0, 5).onChange(saveColorSettings);
-    group1.open();
-
-    // 색상 그룹 2
-    const group2 = gui.addFolder('Color Group 2');
-    group2.add(controls.colorGroup2, 'syncColors').name('Sync Fill & Stroke').onChange(() => {
-      if (controls.colorGroup2.syncColors) {
-        controls.colorGroup2.stroke = controls.colorGroup2.fill;
-      } else {
-        controls.colorGroup2.stroke = controls.colorGroup2.originalStroke;
-      }
-      updateColors();
-      saveColorSettings();
-    });
-    group2.addColor(controls.colorGroup2, 'fill').onChange(() => {
-      if (controls.colorGroup2.syncColors) {
-        controls.colorGroup2.stroke = controls.colorGroup2.fill;
-      }
-      updateColors();
-      saveColorSettings();
-    });
-    group2.addColor(controls.colorGroup2, 'stroke').onChange(() => {
-      if (!controls.colorGroup2.syncColors) {
-        controls.colorGroup2.originalStroke = controls.colorGroup2.stroke;
-        updateColors();
-      }
-      saveColorSettings();
-    });
-    group2.add(controls.colorGroup2, 'fillOpacity', 0, 1).name('Fill Opacity').onChange(() => {
-      updateColors();
-      saveColorSettings();
-    });
-    group2.add(controls.colorGroup2, 'strokeOpacity', 0, 1).name('Stroke Opacity').onChange(() => {
-      updateColors();
-      saveColorSettings();
-    });
-    group2.add(controls.colorGroup2, 'frequency', 0, 5).onChange(saveColorSettings);
-    group2.open();
-
-    // 색상 그룹 3
-    const group3 = gui.addFolder('Color Group 3');
-    group3.add(controls.colorGroup3, 'syncColors').name('Sync Fill & Stroke').onChange(() => {
-      if (controls.colorGroup3.syncColors) {
-        controls.colorGroup3.stroke = controls.colorGroup3.fill;
-      } else {
-        controls.colorGroup3.stroke = controls.colorGroup3.originalStroke;
-      }
-      updateColors();
-      saveColorSettings();
-    });
-    group3.addColor(controls.colorGroup3, 'fill').onChange(() => {
-      if (controls.colorGroup3.syncColors) {
-        controls.colorGroup3.stroke = controls.colorGroup3.fill;
-      }
-      updateColors();
-      saveColorSettings();
-    });
-    group3.addColor(controls.colorGroup3, 'stroke').onChange(() => {
-      if (!controls.colorGroup3.syncColors) {
-        controls.colorGroup3.originalStroke = controls.colorGroup3.stroke;
-        updateColors();
-      }
-      saveColorSettings();
-    });
-    group3.add(controls.colorGroup3, 'fillOpacity', 0, 1).name('Fill Opacity').onChange(() => {
-      updateColors();
-      saveColorSettings();
-    });
-    group3.add(controls.colorGroup3, 'strokeOpacity', 0, 1).name('Stroke Opacity').onChange(() => {
-      updateColors();
-      saveColorSettings();
-    });
-    group3.add(controls.colorGroup3, 'frequency', 0, 5).onChange(saveColorSettings);
-    group3.open();
-
-    // 색상 재생성
-    controls.regenerateColors = createCircles;
-    gui.add(controls, 'regenerateColors').name('Regenerate Colors');
-
-    // 카메라 리셋
-    controls.resetCamera = resetCameraPosition;
-    gui.add(controls, 'resetCamera').name('Reset Camera View');
-
-    // 카메라 컨트롤
-    const cameraFolder = gui.addFolder('📹 Camera Controls');
-    
-    // 카메라 위치
-    const cameraPosFolder = cameraFolder.addFolder('Camera Position');
-    cameraPosFolder.add(controls, 'cameraPositionX', -50, 50).name('Position X').onChange(updateCameraPosition);
-    cameraPosFolder.add(controls, 'cameraPositionY', -50, 50).name('Position Y').onChange(updateCameraPosition);
-    cameraPosFolder.add(controls, 'cameraPositionZ', -50, 50).name('Position Z').onChange(updateCameraPosition);
-    
-    // 카메라 회전
-    const cameraRotFolder = cameraFolder.addFolder('Camera Rotation');
-    cameraRotFolder.add(controls, 'cameraRotationX', -Math.PI, Math.PI).name('Rotation X').onChange(updateCameraRotation);
-    cameraRotFolder.add(controls, 'cameraRotationY', -Math.PI, Math.PI).name('Rotation Y').onChange(updateCameraRotation);
-    cameraRotFolder.add(controls, 'cameraRotationZ', -Math.PI, Math.PI).name('Rotation Z').onChange(updateCameraRotation);
-    
-    // 카메라 설정
-    const cameraSettingsFolder = cameraFolder.addFolder('Camera Settings');
-    cameraSettingsFolder.add(controls, 'cameraMinDistance', 1, 20).name('Min Distance').onChange(updateCameraControls);
-    cameraSettingsFolder.add(controls, 'cameraMaxDistance', 20, 200).name('Max Distance').onChange(updateCameraControls);
-    cameraSettingsFolder.add(controls, 'cameraEnablePan').name('Enable Pan').onChange(updateCameraControls);
-    
-    // 오브젝트 변형
-    const objectFolder = gui.addFolder('🎯 Object Transform');
-    
-    // 오브젝트 위치
-    const objectPosFolder = objectFolder.addFolder('Object Position');
-    objectPosFolder.add(controls, 'objectPositionX', -20, 20).name('Position X').onChange(updateObjectTransform);
-    objectPosFolder.add(controls, 'objectPositionY', -20, 20).name('Position Y').onChange(updateObjectTransform);
-    objectPosFolder.add(controls, 'objectPositionZ', -20, 20).name('Position Z').onChange(updateObjectTransform);
-    
-    // 오브젝트 회전
-    const objectRotFolder = objectFolder.addFolder('Object Rotation');
-    objectRotFolder.add(controls, 'objectRotationX', -Math.PI, Math.PI).name('Rotation X').onChange(updateObjectTransform);
-    objectRotFolder.add(controls, 'objectRotationY', -Math.PI, Math.PI).name('Rotation Y').onChange(updateObjectTransform);
-    objectRotFolder.add(controls, 'objectRotationZ', -Math.PI, Math.PI).name('Rotation Z').onChange(updateObjectTransform);
-    
-    cameraFolder.open();
   };
 
   const animate = () => {
@@ -777,11 +566,61 @@ const ThreeScene: React.FC = () => {
     }
   };
 
+  // Effects for auto-update when controls change
   useEffect(() => {
-    loadColorSettings(); // 저장된 색상 설정 로드
+    if (sceneRef.current) {
+      createCircles();
+    }
+  }, [
+    controls.rows, controls.cols, controls.rowSpacing, controls.colSpacing,
+    controls.shapeType, controls.circleRadius, controls.rectangleWidth, controls.rectangleHeight,
+    controls.enableWidthScaling, controls.widthScaleFactor, controls.borderThickness,
+    controls.frequency1, controls.frequency2, controls.frequency3,
+    controls.fill1, controls.stroke1, controls.syncColors1,
+    controls.fill2, controls.stroke2, controls.syncColors2,
+    controls.fill3, controls.stroke3, controls.syncColors3
+  ]);
+
+  useEffect(() => {
+    if (sceneRef.current && circlesRef.current.length > 0) {
+      updateTransforms();
+    }
+  }, [
+    controls.cylinderAxis, controls.cylinderCurvature, controls.cylinderRadius,
+    controls.objectPositionX, controls.objectPositionY, controls.objectPositionZ,
+    controls.rotationX, controls.rotationY, controls.rotationZ
+  ]);
+
+  useEffect(() => {
+    if (rendererRef.current) {
+      rendererRef.current.setClearColor(controls.backgroundColor);
+    }
+  }, [controls.backgroundColor]);
+
+  useEffect(() => {
+    if (cameraRef.current) {
+      cameraRef.current.position.set(
+        controls.cameraPositionX,
+        controls.cameraPositionY,
+        controls.cameraPositionZ
+      );
+    }
+  }, [controls.cameraPositionX, controls.cameraPositionY, controls.cameraPositionZ]);
+
+  useEffect(() => {
+    if (controlsRef.current) {
+      controlsRef.current.minDistance = controls.cameraMinDistance;
+      controlsRef.current.maxDistance = controls.cameraMaxDistance;
+      if (controlsRef.current instanceof TrackballControls) {
+        controlsRef.current.noPan = !controls.cameraEnablePan;
+      }
+    }
+  }, [controls.cameraMinDistance, controls.cameraMaxDistance, controls.cameraEnablePan]);
+
+  useEffect(() => {
+    loadSettings();
     initScene();
     createCircles();
-    initGUI();
     animate();
 
     window.addEventListener('resize', handleResize);
@@ -789,10 +628,6 @@ const ThreeScene: React.FC = () => {
     return () => {
       if (animationIdRef.current) {
         cancelAnimationFrame(animationIdRef.current);
-      }
-      if (guiRef.current) {
-        guiRef.current.destroy();
-        guiRef.current = null;
       }
       if (controlsRef.current) {
         controlsRef.current.dispose();
@@ -804,6 +639,11 @@ const ThreeScene: React.FC = () => {
       window.removeEventListener('resize', handleResize);
     };
   }, []);
+
+  // Auto-save when controls change
+  useEffect(() => {
+    saveSettings();
+  }, [controls]);
 
   return <div ref={mountRef} className="w-full h-screen" />;
 };

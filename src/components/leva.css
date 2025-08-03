@@ -1,0 +1,111 @@
+/* Leva 패널 너비 조정 - 가장 긴 라벨 고려해서 충분히 크게 */
+[data-leva-root] {
+  --leva-sizes-rootWidth: 480px !important;
+  --leva-sizes-controlWidth: 240px !important;
+  --leva-sizes-numberInputMinWidth: 50px !important;
+  --leva-sizes-scrubberWidth: 8px !important;
+  --leva-sizes-scrubberHeight: 16px !important;
+  --leva-sizes-rowHeight: 32px !important;
+  --leva-sizes-folderTitleHeight: 32px !important;
+  --leva-sizes-checkboxSize: 16px !important;
+  --leva-sizes-joystickWidth: 120px !important;
+  --leva-sizes-joystickHeight: 120px !important;
+  --leva-sizes-colorPickerWidth: 240px !important;
+  --leva-sizes-colorPickerHeight: 200px !important;
+  --leva-sizes-imagePreviewWidth: 18px !important;
+  --leva-sizes-imagePreviewHeight: 18px !important;
+  --leva-sizes-monitorHeight: 60px !important;
+  --leva-sizes-titleBarHeight: 39px !important;
+  width: 480px !important;
+  max-width: 480px !important;
+  min-width: 480px !important;
+}
+
+/* 라벨 텍스트가 잘리지 않도록 충분히 넓게 (가장 긴 라벨 고려) */
+[data-leva-root] .leva-c-kzaXSF {
+  min-width: 220px !important;
+  max-width: 220px !important;
+  flex: 0 0 220px !important;
+  white-space: nowrap !important;
+  overflow: visible !important;
+  text-overflow: unset !important;
+  font-size: 12px !important;
+}
+
+/* 컨트롤 영역 조정 */
+[data-leva-root] .leva-c-jznJNk {
+  min-width: 240px !important;
+  flex: 1 1 240px !important;
+}
+
+/* 폴더 제목이 잘리지 않도록 */
+[data-leva-root] .leva-c-ksJdWE {
+  padding-right: 8px !important;
+  white-space: nowrap !important;
+  overflow: visible !important;
+  text-overflow: unset !important;
+  min-width: 220px !important;
+  font-size: 12px !important;
+}
+
+/* 전체 행 높이 조정 */
+[data-leva-root] .leva-c-bhqQso {
+  height: auto !important;
+  min-height: 32px !important;
+  width: 100% !important;
+}
+
+/* 모든 라벨에 공통 적용 - 강제로 넓게 */
+[data-leva-root] label {
+  white-space: nowrap !important;
+  overflow: visible !important;
+  text-overflow: unset !important;
+  min-width: 220px !important;
+  max-width: 220px !important;
+  font-size: 12px !important;
+}
+
+/* 행 전체 너비 강제 설정 */
+[data-leva-root] > div > div {
+  width: 480px !important;
+}
+
+/* 동적으로 생성되는 모든 입력 행에 적용 */
+[data-leva-root] [data-leva-path] {
+  width: 100% !important;
+}
+
+[data-leva-root] [data-leva-path] > div:first-child {
+  min-width: 220px !important;
+  max-width: 220px !important;
+  flex: 0 0 220px !important;
+  white-space: nowrap !important;
+  overflow: visible !important;
+  text-overflow: unset !important;
+  font-size: 12px !important;
+}
+
+/* collapsed 상태에서도 너비를 미리 계산하도록 강제 */
+[data-leva-root] .leva-c-ksJdWE[data-collapsed="true"] + * {
+  width: 480px !important;
+}
+
+[data-leva-root] .leva-c-ksJdWE[data-collapsed="true"] + * [data-leva-path] > div:first-child {
+  min-width: 220px !important;
+  max-width: 220px !important;
+  flex: 0 0 220px !important;
+}
+
+/* 모든 텍스트 요소에 강제 적용 */
+[data-leva-root] * {
+  box-sizing: border-box !important;
+}
+
+[data-leva-root] span[title],
+[data-leva-root] [data-leva-path] span {
+  white-space: nowrap !important;
+  overflow: visible !important;
+  text-overflow: unset !important;
+  min-width: 220px !important;
+  display: block !important;
+}

@@ -38,9 +38,6 @@ export interface GuiControls {
   cameraPositionX: number;
   cameraPositionY: number;
   cameraPositionZ: number;
-  cameraRotationX: number;
-  cameraRotationY: number;
-  cameraRotationZ: number;
   objectPositionX: number;
   objectPositionY: number;
   objectPositionZ: number;

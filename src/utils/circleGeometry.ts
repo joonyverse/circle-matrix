@@ -132,15 +132,33 @@ export const generateCirclePositions = (config: CircleGridConfig): CircleData[] 
   return circles;
 };
 
+// Seeded random number generator (simple LCG)
+class SeededRandom {
+  private seed: number;
+
+  constructor(seed: number) {
+    this.seed = seed;
+  }
+
+  next(): number {
+    this.seed = (this.seed * 9301 + 49297) % 233280;
+    return this.seed / 233280;
+  }
+}
+
 export const assignColorGroups = (
   circles: CircleData[], 
-  frequencies: [number, number, number]
+  frequencies: [number, number, number],
+  seed?: number
 ): void => {
   const totalFreq = frequencies[0] + frequencies[1] + frequencies[2];
   const normalizedFreq = frequencies.map(f => f / totalFreq);
   
+  // Use seeded random if seed is provided, otherwise use Math.random
+  const random = seed !== undefined ? new SeededRandom(seed) : null;
+  
   circles.forEach(circle => {
-    const rand = Math.random();
+    const rand = random ? random.next() : Math.random();
     if (rand < normalizedFreq[0]) {
       circle.colorGroup = 0;
     } else if (rand < normalizedFreq[0] + normalizedFreq[1]) {
