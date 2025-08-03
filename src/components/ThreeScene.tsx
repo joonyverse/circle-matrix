@@ -28,56 +28,56 @@ const ThreeScene: React.FC = () => {
   const colorSeedRef = useRef<number>(Math.floor(Math.random() * 1000000));
 
   // 기본값 정의
+  const defaultSettings = {
+    // Structure
+    rows: 3,
+    cols: 12,
+    rowSpacing: 2,
+    colSpacing: 2,
+    shapeType: ShapeType.Circle,
+    circleRadius: 0.8,
+    rectangleWidth: 1.6,
+    rectangleHeight: 1.2,
+    enableWidthScaling: false,
+    widthScaleFactor: 2.0,
+    borderThickness: 0.15,
+
+    // Transforms
+    cylinderAxis: 'y' as const,
+    cylinderCurvature: 0,
+    cylinderRadius: 8,
+    objectPositionX: 0,
+    objectPositionY: 0,
+    objectPositionZ: 0,
+    rotationX: 0,
+    rotationY: 0,
+    rotationZ: 0,
+
+    // Appearance
+    backgroundColor: '#1a1a2e',
+    frequency1: 1,
+    syncColors1: false,
+    fill1: { r: 255, g: 107, b: 107, a: 1.0 },
+    stroke1: { r: 255, g: 82, b: 82, a: 1.0 },
+    frequency2: 1,
+    syncColors2: false,
+    fill2: { r: 78, g: 205, b: 196, a: 1.0 },
+    stroke2: { r: 38, g: 166, b: 154, a: 1.0 },
+    frequency3: 1,
+    syncColors3: false,
+    fill3: { r: 69, g: 183, b: 209, a: 1.0 },
+    stroke3: { r: 33, g: 150, b: 243, a: 1.0 },
+
+    // Camera
+    cameraPositionX: 0,
+    cameraPositionY: 0,
+    cameraPositionZ: 15,
+    cameraMinDistance: 5,
+    cameraMaxDistance: 50,
+    cameraEnablePan: true
+  };
+
   const getDefaultValues = () => {
-    const defaults = {
-      // Structure
-      rows: 3,
-      cols: 12,
-      rowSpacing: 2,
-      colSpacing: 2,
-      shapeType: ShapeType.Circle,
-      circleRadius: 0.8,
-      rectangleWidth: 1.6,
-      rectangleHeight: 1.2,
-      enableWidthScaling: false,
-      widthScaleFactor: 2.0,
-      borderThickness: 0.15,
-
-      // Transforms
-      cylinderAxis: 'y' as const,
-      cylinderCurvature: 0,
-      cylinderRadius: 8,
-      objectPositionX: 0,
-      objectPositionY: 0,
-      objectPositionZ: 0,
-      rotationX: 0,
-      rotationY: 0,
-      rotationZ: 0,
-
-      // Appearance
-      backgroundColor: '#1a1a2e',
-      frequency1: 1,
-      syncColors1: false,
-      fill1: { r: 255, g: 107, b: 107, a: 1.0 },
-      stroke1: { r: 255, g: 82, b: 82, a: 1.0 },
-      frequency2: 1,
-      syncColors2: false,
-      fill2: { r: 78, g: 205, b: 196, a: 1.0 },
-      stroke2: { r: 38, g: 166, b: 154, a: 1.0 },
-      frequency3: 1,
-      syncColors3: false,
-      fill3: { r: 69, g: 183, b: 209, a: 1.0 },
-      stroke3: { r: 33, g: 150, b: 243, a: 1.0 },
-
-      // Camera
-      cameraPositionX: 0,
-      cameraPositionY: 0,
-      cameraPositionZ: 15,
-      cameraMinDistance: 5,
-      cameraMaxDistance: 50,
-      cameraEnablePan: true
-    };
-
     // localStorage에서 저장된 값이 있으면 로드
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -90,21 +90,34 @@ const ThreeScene: React.FC = () => {
         }
 
         // 저장된 값들을 기본값과 병합
-        return { ...defaults, ...settings };
+        return { ...defaultSettings, ...settings };
       }
     } catch (error) {
       console.warn('Failed to load settings from localStorage:', error);
     }
 
-    return defaults;
+    return defaultSettings;
   };
 
   const initialValues = getDefaultValues();
 
 
+  // Leva 컨트롤의 특정 값을 리셋하는 함수
+  const resetLevaValues = (valuesToReset: { [key: string]: any }) => {
+    console.log('Resetting leva values:', valuesToReset);
+    set(valuesToReset);
+  };
+
   // Leva 컨트롤 정의
-  const controls = useControls({
+  const [controls, set] = useControls(() => ({
     // ⚙️ Quick Actions
+    'Reset All': button(() => {
+      resetLevaValues(defaultSettings);
+      resetCameraPosition();
+      colorSeedRef.current = Math.floor(Math.random() * 1000000);
+      createCircles();
+      saveSettings();
+    }),
     'Reset Camera': button(() => resetCameraPosition()),
     'Regenerate Colors': button(() => {
       colorSeedRef.current = Math.floor(Math.random() * 1000000);
@@ -116,21 +129,12 @@ const ThreeScene: React.FC = () => {
     Structure: folder({
       'Grid Layout': folder({
         'Reset Grid': button(() => {
-          // Reset grid layout values by clearing from localStorage and reloading
-          const saved = localStorage.getItem('circle-matrix-settings');
-          if (saved) {
-            const settings = JSON.parse(saved);
-            const defaultValues = getDefaultValues();
-            const updatedSettings = {
-              ...settings,
-              rows: defaultValues.rows,
-              cols: defaultValues.cols,
-              rowSpacing: defaultValues.rowSpacing,
-              colSpacing: defaultValues.colSpacing
-            };
-            localStorage.setItem('circle-matrix-settings', JSON.stringify(updatedSettings));
-            window.location.reload();
-          }
+          resetLevaValues({
+            rows: defaultSettings.rows,
+            cols: defaultSettings.cols,
+            rowSpacing: defaultSettings.rowSpacing,
+            colSpacing: defaultSettings.colSpacing
+          });
         }),
         rows: { value: initialValues.rows, min: 1, max: 50, step: 1 },
         cols: { value: initialValues.cols, min: 1, max: 100, step: 1 },
@@ -139,23 +143,15 @@ const ThreeScene: React.FC = () => {
       }, { collapsed: false }),
       'Shape Settings': folder({
         'Reset Shape': button(() => {
-          const saved = localStorage.getItem('circle-matrix-settings');
-          if (saved) {
-            const settings = JSON.parse(saved);
-            const defaultValues = getDefaultValues();
-            const updatedSettings = {
-              ...settings,
-              shapeType: defaultValues.shapeType,
-              circleRadius: defaultValues.circleRadius,
-              rectangleWidth: defaultValues.rectangleWidth,
-              rectangleHeight: defaultValues.rectangleHeight,
-              enableWidthScaling: defaultValues.enableWidthScaling,
-              widthScaleFactor: defaultValues.widthScaleFactor,
-              borderThickness: defaultValues.borderThickness
-            };
-            localStorage.setItem('circle-matrix-settings', JSON.stringify(updatedSettings));
-            window.location.reload();
-          }
+          resetLevaValues({
+            shapeType: defaultSettings.shapeType,
+            circleRadius: defaultSettings.circleRadius,
+            rectangleWidth: defaultSettings.rectangleWidth,
+            rectangleHeight: defaultSettings.rectangleHeight,
+            enableWidthScaling: defaultSettings.enableWidthScaling,
+            widthScaleFactor: defaultSettings.widthScaleFactor,
+            borderThickness: defaultSettings.borderThickness
+          });
         }),
         shapeType: { value: initialValues.shapeType, options: { Circle: ShapeType.Circle, Rectangle: ShapeType.Rectangle } },
         circleRadius: { value: initialValues.circleRadius, min: 0.1, max: 12 },
@@ -171,19 +167,11 @@ const ThreeScene: React.FC = () => {
     Transforms: folder({
       'Cylinder Roll': folder({
         'Reset Cylinder': button(() => {
-          const saved = localStorage.getItem('circle-matrix-settings');
-          if (saved) {
-            const settings = JSON.parse(saved);
-            const defaultValues = getDefaultValues();
-            const updatedSettings = {
-              ...settings,
-              cylinderAxis: defaultValues.cylinderAxis,
-              cylinderCurvature: defaultValues.cylinderCurvature,
-              cylinderRadius: defaultValues.cylinderRadius
-            };
-            localStorage.setItem('circle-matrix-settings', JSON.stringify(updatedSettings));
-            window.location.reload();
-          }
+          resetLevaValues({
+            cylinderAxis: defaultSettings.cylinderAxis,
+            cylinderCurvature: defaultSettings.cylinderCurvature,
+            cylinderRadius: defaultSettings.cylinderRadius
+          });
         }),
         cylinderAxis: { value: initialValues.cylinderAxis, options: { 'Y-Axis (Horizontal)': 'y', 'X-Axis (Vertical)': 'x' } },
         cylinderCurvature: { value: initialValues.cylinderCurvature, min: 0, max: 1 },
@@ -191,22 +179,14 @@ const ThreeScene: React.FC = () => {
       }, { collapsed: false }),
       'Object Transform': folder({
         'Reset Transform': button(() => {
-          const saved = localStorage.getItem('circle-matrix-settings');
-          if (saved) {
-            const settings = JSON.parse(saved);
-            const defaultValues = getDefaultValues();
-            const updatedSettings = {
-              ...settings,
-              objectPositionX: defaultValues.objectPositionX,
-              objectPositionY: defaultValues.objectPositionY,
-              objectPositionZ: defaultValues.objectPositionZ,
-              rotationX: defaultValues.rotationX,
-              rotationY: defaultValues.rotationY,
-              rotationZ: defaultValues.rotationZ
-            };
-            localStorage.setItem('circle-matrix-settings', JSON.stringify(updatedSettings));
-            window.location.reload();
-          }
+          resetLevaValues({
+            objectPositionX: defaultSettings.objectPositionX,
+            objectPositionY: defaultSettings.objectPositionY,
+            objectPositionZ: defaultSettings.objectPositionZ,
+            rotationX: defaultSettings.rotationX,
+            rotationY: defaultSettings.rotationY,
+            rotationZ: defaultSettings.rotationZ
+          });
         }),
         Position: folder({
           objectPositionX: { value: initialValues.objectPositionX, min: -20, max: 20 },
@@ -226,20 +206,12 @@ const ThreeScene: React.FC = () => {
       backgroundColor: initialValues.backgroundColor,
       'Color Group 1': folder({
         'Reset Group 1': button(() => {
-          const saved = localStorage.getItem('circle-matrix-settings');
-          if (saved) {
-            const settings = JSON.parse(saved);
-            const defaultValues = getDefaultValues();
-            const updatedSettings = {
-              ...settings,
-              frequency1: defaultValues.frequency1,
-              syncColors1: defaultValues.syncColors1,
-              fill1: defaultValues.fill1,
-              stroke1: defaultValues.stroke1
-            };
-            localStorage.setItem('circle-matrix-settings', JSON.stringify(updatedSettings));
-            window.location.reload();
-          }
+          resetLevaValues({
+            frequency1: defaultSettings.frequency1,
+            syncColors1: defaultSettings.syncColors1,
+            fill1: defaultSettings.fill1,
+            stroke1: defaultSettings.stroke1
+          });
         }),
         frequency1: { value: initialValues.frequency1, min: 0, max: 5 },
         syncColors1: initialValues.syncColors1,
@@ -248,20 +220,12 @@ const ThreeScene: React.FC = () => {
       }, { collapsed: false }),
       'Color Group 2': folder({
         'Reset Group 2': button(() => {
-          const saved = localStorage.getItem('circle-matrix-settings');
-          if (saved) {
-            const settings = JSON.parse(saved);
-            const defaultValues = getDefaultValues();
-            const updatedSettings = {
-              ...settings,
-              frequency2: defaultValues.frequency2,
-              syncColors2: defaultValues.syncColors2,
-              fill2: defaultValues.fill2,
-              stroke2: defaultValues.stroke2
-            };
-            localStorage.setItem('circle-matrix-settings', JSON.stringify(updatedSettings));
-            window.location.reload();
-          }
+          resetLevaValues({
+            frequency2: defaultSettings.frequency2,
+            syncColors2: defaultSettings.syncColors2,
+            fill2: defaultSettings.fill2,
+            stroke2: defaultSettings.stroke2
+          });
         }),
         frequency2: { value: initialValues.frequency2, min: 0, max: 5 },
         syncColors2: initialValues.syncColors2,
@@ -270,20 +234,12 @@ const ThreeScene: React.FC = () => {
       }, { collapsed: false }),
       'Color Group 3': folder({
         'Reset Group 3': button(() => {
-          const saved = localStorage.getItem('circle-matrix-settings');
-          if (saved) {
-            const settings = JSON.parse(saved);
-            const defaultValues = getDefaultValues();
-            const updatedSettings = {
-              ...settings,
-              frequency3: defaultValues.frequency3,
-              syncColors3: defaultValues.syncColors3,
-              fill3: defaultValues.fill3,
-              stroke3: defaultValues.stroke3
-            };
-            localStorage.setItem('circle-matrix-settings', JSON.stringify(updatedSettings));
-            window.location.reload();
-          }
+          resetLevaValues({
+            frequency3: defaultSettings.frequency3,
+            syncColors3: defaultSettings.syncColors3,
+            fill3: defaultSettings.fill3,
+            stroke3: defaultSettings.stroke3
+          });
         }),
         frequency3: { value: initialValues.frequency3, min: 0, max: 5 },
         syncColors3: initialValues.syncColors3,
@@ -295,22 +251,14 @@ const ThreeScene: React.FC = () => {
     // 📹 Camera
     Camera: folder({
       'Reset Camera Settings': button(() => {
-        const saved = localStorage.getItem('circle-matrix-settings');
-        if (saved) {
-          const settings = JSON.parse(saved);
-          const defaultValues = getDefaultValues();
-          const updatedSettings = {
-            ...settings,
-            cameraPositionX: defaultValues.cameraPositionX,
-            cameraPositionY: defaultValues.cameraPositionY,
-            cameraPositionZ: defaultValues.cameraPositionZ,
-            cameraMinDistance: defaultValues.cameraMinDistance,
-            cameraMaxDistance: defaultValues.cameraMaxDistance,
-            cameraEnablePan: defaultValues.cameraEnablePan
-          };
-          localStorage.setItem('circle-matrix-settings', JSON.stringify(updatedSettings));
-          window.location.reload();
-        }
+        resetLevaValues({
+          cameraPositionX: defaultSettings.cameraPositionX,
+          cameraPositionY: defaultSettings.cameraPositionY,
+          cameraPositionZ: defaultSettings.cameraPositionZ,
+          cameraMinDistance: defaultSettings.cameraMinDistance,
+          cameraMaxDistance: defaultSettings.cameraMaxDistance,
+          cameraEnablePan: defaultSettings.cameraEnablePan
+        });
       }),
       Position: folder({
         cameraPositionX: { value: initialValues.cameraPositionX, min: -50, max: 50 },
@@ -323,11 +271,11 @@ const ThreeScene: React.FC = () => {
         cameraEnablePan: initialValues.cameraEnablePan
       }, { collapsed: false })
     }, { collapsed: true })
-  });
+  }));
 
   // RGBA 색상을 CSS 색상 문자열로 변환
-  const rgbaToColor = (rgba: { r: number; g: number; b: number; a: number }) => {
-    return `rgba(${rgba.r}, ${rgba.g}, ${rgba.b}, ${rgba.a})`;
+  const rgbToCss = (rgba: { r: number; g: number; b: number; a: number }) => {
+    return `rgb(${rgba.r}, ${rgba.g}, ${rgba.b})`;
   };
 
   // 모든 설정 저장
@@ -444,26 +392,26 @@ const ThreeScene: React.FC = () => {
       let fillColor, strokeColor, fillOpacity, strokeOpacity;
       switch (circle.colorGroup) {
         case 0:
-          fillColor = rgbaToColor(controls.fill1);
-          strokeColor = controls.syncColors1 ? rgbaToColor(controls.fill1) : rgbaToColor(controls.stroke1);
+          fillColor = rgbToCss(controls.fill1);
+          strokeColor = controls.syncColors1 ? rgbToCss(controls.fill1) : rgbToCss(controls.stroke1);
           fillOpacity = controls.fill1.a;
           strokeOpacity = controls.stroke1.a;
           break;
         case 1:
-          fillColor = rgbaToColor(controls.fill2);
-          strokeColor = controls.syncColors2 ? rgbaToColor(controls.fill2) : rgbaToColor(controls.stroke2);
+          fillColor = rgbToCss(controls.fill2);
+          strokeColor = controls.syncColors2 ? rgbToCss(controls.fill2) : rgbToCss(controls.stroke2);
           fillOpacity = controls.fill2.a;
           strokeOpacity = controls.stroke2.a;
           break;
         case 2:
-          fillColor = rgbaToColor(controls.fill3);
-          strokeColor = controls.syncColors3 ? rgbaToColor(controls.fill3) : rgbaToColor(controls.stroke3);
+          fillColor = rgbToCss(controls.fill3);
+          strokeColor = controls.syncColors3 ? rgbToCss(controls.fill3) : rgbToCss(controls.stroke3);
           fillOpacity = controls.fill3.a;
           strokeOpacity = controls.stroke3.a;
           break;
         default:
-          fillColor = rgbaToColor(controls.fill1);
-          strokeColor = controls.syncColors1 ? rgbaToColor(controls.fill1) : rgbaToColor(controls.stroke1);
+          fillColor = rgbToCss(controls.fill1);
+          strokeColor = controls.syncColors1 ? rgbToCss(controls.fill1) : rgbToCss(controls.stroke1);
           fillOpacity = controls.fill1.a;
           strokeOpacity = controls.stroke1.a;
       }
@@ -486,6 +434,7 @@ const ThreeScene: React.FC = () => {
         opacity: strokeOpacity
       });
       const strokeMesh = new THREE.Mesh(strokeGeometry, strokeMaterial);
+      strokeMesh.position.z = 0.001; // z-fighting 방지를 위해 약간의 오프셋을 적용합니다.
       group.add(strokeMesh);
 
       group.position.set(circle.position.x, circle.position.y, circle.position.z);
