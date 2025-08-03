@@ -14,6 +14,7 @@ interface ProjectManagerProps {
   onDeleteProject: (name: string) => Project[];
   onRenameProject: (oldName: string, newName: string) => Project[];
   onSaveToActiveProject: () => void;
+  onOpenSaveModal: () => void;
   onClose: () => void;
   onShareProject?: (settings: Record<string, unknown>) => void;
 }
@@ -26,11 +27,10 @@ const ProjectManager: React.FC<ProjectManagerProps> = ({
   onDeleteProject,
   onRenameProject,
   onSaveToActiveProject,
+  onOpenSaveModal,
   onClose,
   onShareProject
 }) => {
-  const [projectName, setProjectName] = useState('');
-  const [showSaveForm, setShowSaveForm] = useState(false);
   const [message, setMessage] = useState('');
   const [currentProjects, setCurrentProjects] = useState<Project[]>(projects);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
@@ -60,33 +60,7 @@ const ProjectManager: React.FC<ProjectManagerProps> = ({
     setCurrentProjects(projects);
   }, [projects]);
 
-  const handleSaveProject = () => {
-    if (!projectName.trim()) {
-      setMessage('Please enter a project name.');
-      return;
-    }
 
-    if (currentProjects.some(p => p.name === projectName.trim())) {
-      if (!confirm(`Project "${projectName}" already exists. Overwrite?`)) {
-        return;
-      }
-    }
-
-    try {
-      console.log('💾 ProjectManager: Saving project:', projectName.trim());
-      const updatedProjects = onSaveProject(projectName.trim());
-      console.log('💾 ProjectManager: Save result. Total projects:', updatedProjects.length);
-      setCurrentProjects(updatedProjects);
-      setProjectName('');
-      setShowSaveForm(false);
-      setMessage(`Project "${projectName}" saved successfully.`);
-      setTimeout(() => setMessage(''), 3000);
-    } catch (error) {
-      console.error('❌ ProjectManager: Error saving project:', error);
-      setMessage('Error saving project.');
-      setTimeout(() => setMessage(''), 3000);
-    }
-  };
 
   const handleLoadProject = (name: string) => {
     console.log('🎯 ProjectManager: Loading project:', name);
@@ -190,68 +164,35 @@ const ProjectManager: React.FC<ProjectManagerProps> = ({
         </div>
       )}
 
-      {/* Save Form */}
-      {showSaveForm && (
-        <div className="p-3 border-b border-[#3a3a3a] bg-[#1a1a1a] flex-shrink-0">
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={projectName}
-              onChange={(e) => setProjectName(e.target.value)}
-              placeholder="Project name"
-              className="flex-1 px-2 py-1 bg-[#2a2a2a] border border-[#4a4a4a] rounded text-[#e0e0e0] placeholder-[#666] focus:outline-none focus:border-[#666] text-xs"
-              onKeyPress={(e) => e.key === 'Enter' && handleSaveProject()}
-            />
-            <button
-              onClick={handleSaveProject}
-              className="px-3 py-1 bg-[#3a5a3a] text-[#4ade80] rounded hover:bg-[#4a6a4a] transition-colors text-xs"
-            >
-              Save
-            </button>
-            <button
-              onClick={() => {
-                setShowSaveForm(false);
-                setProjectName('');
-              }}
-              className="px-3 py-1 bg-[#5a3a3a] text-[#f87171] rounded hover:bg-[#6a4a4a] transition-colors text-xs"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Content */}
       <div className="p-3 flex-1 overflow-y-auto">
         {/* Save Buttons */}
-        {!showSaveForm && (
-          <div className="space-y-2 mb-3">
-            <button
-              onClick={() => setShowSaveForm(true)}
-              className="w-full px-3 py-2 bg-[#3a5a3a] text-[#4ade80] rounded hover:bg-[#4a6a4a] transition-colors flex items-center justify-center gap-2 text-xs"
-            >
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              Save As New Project
-            </button>
+        <div className="space-y-2 mb-3">
+          <button
+            onClick={onOpenSaveModal}
+            className="w-full px-3 py-2 bg-[#3a5a3a] text-[#4ade80] rounded hover:bg-[#4a6a4a] transition-colors flex items-center justify-center gap-2 text-xs"
+          >
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+            Save As New Project
+          </button>
 
-            <button
-              onClick={onSaveToActiveProject}
-              disabled={!activeProject}
-              className={`w-full px-3 py-2 rounded transition-colors flex items-center justify-center gap-2 text-xs ${activeProject
-                ? 'bg-[#1a3a5a] text-[#60a5fa] hover:bg-[#2a4a6a]'
-                : 'bg-[#2a2a2a] text-[#666] cursor-not-allowed'
-                }`}
-              title={activeProject ? `Save to active project: ${activeProject}` : 'No active project'}
-            >
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-              {activeProject ? `Save to Active Project: ${activeProject}` : 'Save to Active Project (None)'}
-            </button>
-          </div>
-        )}
+          <button
+            onClick={onSaveToActiveProject}
+            disabled={!activeProject}
+            className={`w-full px-3 py-2 rounded transition-colors flex items-center justify-center gap-2 text-xs ${activeProject
+              ? 'bg-[#1a3a5a] text-[#60a5fa] hover:bg-[#2a4a6a]'
+              : 'bg-[#2a2a2a] text-[#666] cursor-not-allowed'
+              }`}
+            title={activeProject ? `Save to active project: ${activeProject}` : 'No active project'}
+          >
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            {activeProject ? `Save to Active Project: ${activeProject}` : 'Save to Active Project (None)'}
+          </button>
+        </div>
 
         {/* Project List */}
         <div className="space-y-2 overflow-y-auto">

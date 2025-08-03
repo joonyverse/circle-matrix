@@ -11,6 +11,7 @@ import {
   applyCylindricalTransform
 } from '../utils/circleGeometry';
 import ProjectManager from './ProjectManager';
+import SaveProjectModal from './SaveProjectModal';
 
 interface Project {
   name: string;
@@ -30,6 +31,7 @@ const ThreeScene: React.FC = () => {
   const [isLoadingProject, setIsLoadingProject] = useState(false);
   const [forceUpdate, setForceUpdate] = useState(0);
   const [activeProject, setActiveProject] = useState<string | null>(null);
+  const [showSaveModal, setShowSaveModal] = useState(false);
 
   // localStorage 키
   const STORAGE_KEY = 'circle-matrix-settings';
@@ -126,7 +128,6 @@ const ThreeScene: React.FC = () => {
 
   // Leva 컨트롤의 특정 값을 리셋하는 함수
   const resetLevaValues = (valuesToReset: { [key: string]: any }) => {
-    console.log('Resetting leva values:', valuesToReset);
     set(valuesToReset);
   };
 
@@ -187,7 +188,6 @@ const ThreeScene: React.FC = () => {
       saveSettings();
     }),
     'Share URL': button(() => shareProjectURL()),
-    'Quick Save': button(() => saveToActiveProject()),
 
     // 📐 Structure
     Structure: folder({
@@ -337,15 +337,16 @@ const ThreeScene: React.FC = () => {
     }, { collapsed: true })
   }));
 
-  // 현재 설정을 가져오는 함수
+  // 현재 설정을 가져오는 함수 (카메라 위치 제외)
   const getCurrentSettings = useCallback(() => {
+    const { cameraPositionX, cameraPositionY, cameraPositionZ, ...settingsWithoutCamera } = controls;
     return {
-      ...controls,
+      ...settingsWithoutCamera,
       colorSeed: colorSeedRef.current
     };
   }, [controls]);
 
-  // 설정을 적용하는 함수 (새로고침 없이)
+  // 설정을 적용하는 함수 (카메라 위치 제외)
   const applySettings = useCallback((settings: Record<string, unknown>) => {
     console.log('🔧 applySettings called with:', Object.keys(settings));
     setIsLoadingProject(true);
@@ -353,104 +354,55 @@ const ThreeScene: React.FC = () => {
     // 색상 시드 적용
     if (settings.colorSeed !== undefined) {
       colorSeedRef.current = settings.colorSeed as number;
-      console.log('🎨 Color seed set to:', colorSeedRef.current);
     }
 
-    // 설정을 localStorage에 저장
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-    console.log('💾 Settings saved to localStorage');
+    // 카메라 위치를 제외한 설정만 localStorage에 저장
+    const { cameraPositionX, cameraPositionY, cameraPositionZ, ...settingsWithoutCamera } = settings;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(settingsWithoutCamera));
 
-    // Leva 컨트롤 값들을 단계적으로 업데이트
-    console.log('🎛️ Applying settings to Leva controls...');
+    // 설정 적용
+    const settingsToApply = Object.keys(settings).filter(key =>
+      key !== 'colorSeed' && settings[key] !== undefined
+    );
 
-    const applySettingsWithDelay = async () => {
-      const settingsToApply = Object.keys(settings).filter(key =>
-        key !== 'colorSeed' && settings[key] !== undefined
-      );
+    settingsToApply.forEach(key => {
+      set({ [key]: settings[key] });
+    });
 
-      console.log(`📋 Applying ${settingsToApply.length} settings...`);
-
-      // 먼저 한 번에 적용 시도
-      try {
-        const batchSettings: Record<string, unknown> = {};
-        settingsToApply.forEach(key => {
-          batchSettings[key] = settings[key];
-        });
-
-        console.log('🎯 Attempting batch update...');
-        set(batchSettings);
-        console.log('✅ Batch update successful');
-        return;
-      } catch {
-        console.warn('⚠️ Batch update failed, trying individual updates...');
-      }
-
-      // 개별 적용
-      for (const key of settingsToApply) {
-        try {
-          console.log(`🔧 Setting ${key} to:`, settings[key]);
-          set({ [key]: settings[key] });
-          // 각 설정 사이에 지연
-          await new Promise(resolve => setTimeout(resolve, 50));
-        } catch (error) {
-          console.warn(`⚠️ Failed to set ${key}:`, error);
-        }
-      }
-      console.log('✅ All settings applied');
-    };
-
-    applySettingsWithDelay();
-
-    // 강제 업데이트로 씬 재생성
+    // 씬 재생성
     setTimeout(() => {
       setForceUpdate(prev => prev + 1);
       setIsLoadingProject(false);
-      console.log('✅ Project loading completed');
-    }, 1500);
+    }, 500);
   }, [set]);
 
   // 프로젝트 로드 후 씬 업데이트를 위한 함수
   const loadProjectAndUpdate = useCallback((name: string) => {
-    console.log('🔄 loadProjectAndUpdate called for:', name);
     const savedProjects = localStorage.getItem(PROJECTS_KEY);
-    console.log('📦 Saved projects:', savedProjects ? 'exists' : 'not found');
 
     if (!savedProjects) {
-      console.log('❌ No saved projects found');
       return null;
     }
 
     const projects: Project[] = JSON.parse(savedProjects);
-    console.log('📋 Projects found:', projects.length);
-    console.log('📝 Available projects:', projects.map(p => p.name));
-
     const project = projects.find(p => p.name === name);
-    console.log('🎯 Project found:', project ? project.name : 'not found');
-    console.log('🎯 Project details:', project ? {
-      name: project.name,
-      timestamp: new Date(project.timestamp).toLocaleString(),
-      settingsKeys: Object.keys(project.settings)
-    } : 'null');
 
     if (project) {
-      console.log('✅ Applying project settings...');
-      console.log('🔧 Project settings preview:', {
-        rows: project.settings.rows,
-        cols: project.settings.cols,
-        backgroundColor: project.settings.backgroundColor,
-        colorSeed: project.settings.colorSeed
-      });
       applySettings(project.settings);
-      setActiveProject(name); // 활성 프로젝트 설정
+      setActiveProject(name);
+
+      // 프로젝트 로드 후 카메라를 기본 위치로 리셋
+      setTimeout(() => {
+        resetCameraPosition();
+      }, 100);
+
       return project;
     }
-    console.log('❌ Project not found');
     return null;
   }, [applySettings]);
 
   // 프로젝트 저장 함수
   const saveProject = useCallback((name: string) => {
-    console.log('💾 saveProject called for:', name);
     const currentSettings = getCurrentSettings();
     const project: Project = {
       name,
@@ -458,44 +410,18 @@ const ThreeScene: React.FC = () => {
       timestamp: Date.now()
     };
 
-    console.log('📝 Project to save:', {
-      name: project.name,
-      timestamp: new Date(project.timestamp).toLocaleString(),
-      settingsKeys: Object.keys(project.settings)
-    });
-
-    // Structure 변수들이 모두 저장되는지 확인
-    console.log('🔍 Structure variables check:', {
-      rows: currentSettings.rows,
-      cols: currentSettings.cols,
-      rowSpacing: currentSettings.rowSpacing,
-      colSpacing: currentSettings.colSpacing,
-      shapeType: currentSettings.shapeType,
-      circleRadius: currentSettings.circleRadius,
-      rectangleWidth: currentSettings.rectangleWidth,
-      rectangleHeight: currentSettings.rectangleHeight,
-      enableWidthScaling: currentSettings.enableWidthScaling,
-      widthScaleFactor: currentSettings.widthScaleFactor
-    });
-
     const savedProjects = localStorage.getItem(PROJECTS_KEY);
     const projects: Project[] = savedProjects ? JSON.parse(savedProjects) : [];
-    console.log('📦 Existing projects:', projects.map(p => p.name));
 
     // 같은 이름의 프로젝트가 있으면 업데이트, 없으면 추가
     const existingIndex = projects.findIndex(p => p.name === name);
     if (existingIndex >= 0) {
-      console.log('🔄 Updating existing project at index:', existingIndex);
       projects[existingIndex] = project;
     } else {
-      console.log('➕ Adding new project');
       projects.push(project);
     }
 
     localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
-    console.log('💾 Projects saved. Total projects:', projects.length);
-
-    // 활성 프로젝트로 설정
     setActiveProject(name);
 
     return projects;
@@ -509,16 +435,36 @@ const ThreeScene: React.FC = () => {
       return;
     }
 
-    console.log('💾 saveToActiveProject called for:', activeProject);
     const updatedProjects = saveProject(activeProject);
     setMessage(`Saved to active project: "${activeProject}"`);
     setTimeout(() => setMessage(''), 3000);
     return updatedProjects;
   }, [activeProject, saveProject]);
 
+  // 저장 모달에서 새 프로젝트 저장하는 함수
+  const handleSaveNewProject = useCallback((name: string) => {
+    try {
+      const updatedProjects = saveProject(name);
+      setActiveProject(name);
+      setMessage(`Project "${name}" saved successfully.`);
+      setTimeout(() => setMessage(''), 3000);
+      return updatedProjects;
+    } catch (error) {
+      console.error('Error saving project:', error);
+      setMessage('Error saving project.');
+      setTimeout(() => setMessage(''), 3000);
+    }
+  }, [saveProject]);
+
+  // 기존 프로젝트 이름 목록 가져오기
+  const getExistingProjectNames = useCallback(() => {
+    const savedProjects = localStorage.getItem(PROJECTS_KEY);
+    const projects: Project[] = savedProjects ? JSON.parse(savedProjects) : [];
+    return projects.map((p: Project) => p.name);
+  }, []);
+
   // 프로젝트 로드 함수
   const loadProject = useCallback((name: string) => {
-    console.log('📂 loadProject called for:', name);
     return loadProjectAndUpdate(name);
   }, [loadProjectAndUpdate]);
 
@@ -569,60 +515,79 @@ const ThreeScene: React.FC = () => {
     return savedProjects ? JSON.parse(savedProjects) : [];
   }, []);
 
-  // URL에서 프로젝트 설정 로드
+  // URL에서 프로젝트 설정 로드 (카메라 위치 제외)
   const loadProjectFromURL = useCallback(() => {
-    console.log('🔍 loadProjectFromURL called');
     const urlParams = new URLSearchParams(window.location.search);
     const projectData = urlParams.get('project');
-    console.log('📋 URL project data:', projectData ? 'exists' : 'not found');
 
     if (projectData) {
       try {
-        console.log('🔄 Decoding project data...');
         const settings = JSON.parse(decodeURIComponent(projectData));
-        console.log('✅ Settings decoded:', Object.keys(settings));
 
         // 색상 시드 적용
         if (settings.colorSeed !== undefined) {
           colorSeedRef.current = settings.colorSeed as number;
-          console.log('🎨 Color seed applied:', colorSeedRef.current);
         }
 
-        // 설정을 localStorage에 저장
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-        console.log('💾 Settings saved to localStorage');
+        // 카메라 위치를 제외한 설정만 localStorage에 저장
+        const { cameraPositionX, cameraPositionY, cameraPositionZ, ...settingsWithoutCamera } = settings;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(settingsWithoutCamera));
 
-        // URL에서 프로젝트 파라미터 제거하여 무한 루프 방지
+        // URL에서 프로젝트 파라미터 제거
         const newURL = window.location.pathname;
         window.history.replaceState({}, '', newURL);
-        console.log('🧹 URL cleaned:', newURL);
 
         setMessage('Project loaded from URL successfully.');
         setTimeout(() => setMessage(''), 3000);
         return true;
       } catch (error) {
-        console.error('❌ Failed to load project from URL:', error);
         return false;
       }
     }
-    console.log('📭 No project data in URL');
     return false;
   }, []);
 
-  // 현재 설정을 URL로 공유
-  const shareProjectURL = useCallback(() => {
+  // 현재 설정을 URL로 공유 (카메라 위치 제외)
+  const shareProjectURL = useCallback(async () => {
     const currentSettings = getCurrentSettings();
     const projectData = encodeURIComponent(JSON.stringify(currentSettings));
     const shareURL = `${window.location.origin}${window.location.pathname}?project=${projectData}`;
 
-    // 클립보드에 복사
-    navigator.clipboard.writeText(shareURL).then(() => {
-      setMessage('Share URL copied to clipboard!');
-      setTimeout(() => setMessage(''), 3000);
-    }).catch(() => {
-      // 클립보드 복사 실패 시 URL을 alert로 표시
-      alert(`Share URL:\n${shareURL}`);
-    });
+    try {
+      // TinyURL API를 사용하여 URL 단축
+      const response = await fetch('https://tinyurl.com/api-create.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `url=${encodeURIComponent(shareURL)}`
+      });
+
+      if (response.ok) {
+        const tinyURL = await response.text();
+
+        // 클립보드에 복사
+        await navigator.clipboard.writeText(tinyURL);
+        setMessage('TinyURL copied to clipboard!');
+        setTimeout(() => setMessage(''), 3000);
+      } else {
+        // TinyURL 생성 실패 시 원본 URL 사용
+        await navigator.clipboard.writeText(shareURL);
+        setMessage('Share URL copied to clipboard!');
+        setTimeout(() => setMessage(''), 3000);
+      }
+    } catch (error) {
+      console.warn('Failed to create TinyURL:', error);
+      // 에러 발생 시 원본 URL 사용
+      try {
+        await navigator.clipboard.writeText(shareURL);
+        setMessage('Share URL copied to clipboard!');
+        setTimeout(() => setMessage(''), 3000);
+      } catch (clipboardError) {
+        // 클립보드 복사 실패 시 URL을 alert로 표시
+        alert(`Share URL:\n${shareURL}`);
+      }
+    }
   }, [getCurrentSettings]);
 
   // 메시지 상태 추가
@@ -633,10 +598,11 @@ const ThreeScene: React.FC = () => {
     return `rgb(${rgba.r}, ${rgba.g}, ${rgba.b})`;
   };
 
-  // 모든 설정 저장
+  // 모든 설정 저장 (카메라 위치 제외)
   const saveSettings = useCallback(() => {
+    const { cameraPositionX, cameraPositionY, cameraPositionZ, ...settingsWithoutCamera } = controls;
     const settings = {
-      ...controls,
+      ...settingsWithoutCamera,
       colorSeed: colorSeedRef.current
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
@@ -921,7 +887,7 @@ const ThreeScene: React.FC = () => {
     }
   }, []);
 
-  // Leva 카메라 위치 컨트롤 → 카메라 실시간 적용
+  // Leva 카메라 위치 컨트롤 → 카메라 실시간 적용 (저장되지 않음)
   useEffect(() => {
     if (controlsRef.current && cameraRef.current) {
       const camera = cameraRef.current;
@@ -964,16 +930,21 @@ const ThreeScene: React.FC = () => {
   }, [set]);
 
   useEffect(() => {
-    console.log('🚀 Component initialized');
     loadSettings();
 
     // URL에서 프로젝트 로드 시도
     const urlLoaded = loadProjectFromURL();
-    console.log('🌐 URL load result:', urlLoaded);
 
     initScene();
     createCircles();
     animate();
+
+    // 프로젝트 로드 후 카메라를 기본 위치로 리셋
+    if (urlLoaded) {
+      setTimeout(() => {
+        resetCameraPosition();
+      }, 100);
+    }
 
     window.addEventListener('resize', handleResize);
 
@@ -992,9 +963,23 @@ const ThreeScene: React.FC = () => {
     };
   }, [loadProjectFromURL]);
 
-  // WASD 키보드 컨트롤
+  // 키보드 컨트롤 (WASD + Ctrl+S)
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      // Ctrl+S 저장 단축키
+      if (event.ctrlKey && event.key === 's') {
+        event.preventDefault();
+        if (activeProject) {
+          // 활성 프로젝트가 있으면 Quick Save
+          saveToActiveProject();
+        } else {
+          // 활성 프로젝트가 없으면 저장 모달 열기
+          setShowSaveModal(true);
+        }
+        return;
+      }
+
+      // WASD 카메라 컨트롤
       if (!controlsRef.current) return;
 
       const moveSpeed = 0.5;
@@ -1042,7 +1027,7 @@ const ThreeScene: React.FC = () => {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [set]);
+  }, [set, activeProject, saveToActiveProject]);
 
   // Auto-save when controls change
   useEffect(() => {
@@ -1052,7 +1037,6 @@ const ThreeScene: React.FC = () => {
   // 강제 업데이트 시 씬 재생성
   useEffect(() => {
     if (forceUpdate > 0) {
-      console.log('🔄 Force updating scene...');
       if (sceneRef.current) {
         createCircles();
       }
@@ -1091,17 +1075,47 @@ const ThreeScene: React.FC = () => {
           onDeleteProject={deleteProject}
           onRenameProject={renameProject}
           onSaveToActiveProject={saveToActiveProject}
+          onOpenSaveModal={() => setShowSaveModal(true)}
           onClose={() => setShowProjectManager(false)}
-          onShareProject={(settings) => {
+          onShareProject={async (settings) => {
             const projectData = encodeURIComponent(JSON.stringify(settings));
             const shareURL = `${window.location.origin}${window.location.pathname}?project=${projectData}`;
 
-            navigator.clipboard.writeText(shareURL).then(() => {
-              setMessage('Project URL copied to clipboard!');
-              setTimeout(() => setMessage(''), 3000);
-            }).catch(() => {
-              alert(`Share URL:\n${shareURL}`);
-            });
+            try {
+              // TinyURL API를 사용하여 URL 단축
+              const response = await fetch('https://tinyurl.com/api-create.php', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `url=${encodeURIComponent(shareURL)}`
+              });
+
+              if (response.ok) {
+                const tinyURL = await response.text();
+
+                // 클립보드에 복사
+                await navigator.clipboard.writeText(tinyURL);
+                setMessage('TinyURL copied to clipboard!');
+                setTimeout(() => setMessage(''), 3000);
+              } else {
+                // TinyURL 생성 실패 시 원본 URL 사용
+                await navigator.clipboard.writeText(shareURL);
+                setMessage('Project URL copied to clipboard!');
+                setTimeout(() => setMessage(''), 3000);
+              }
+            } catch (error) {
+              console.warn('Failed to create TinyURL:', error);
+              // 에러 발생 시 원본 URL 사용
+              try {
+                await navigator.clipboard.writeText(shareURL);
+                setMessage('Project URL copied to clipboard!');
+                setTimeout(() => setMessage(''), 3000);
+              } catch (clipboardError) {
+                // 클립보드 복사 실패 시 URL을 alert로 표시
+                alert(`Share URL:\n${shareURL}`);
+              }
+            }
           }}
         />
       </div>
@@ -1132,8 +1146,19 @@ const ThreeScene: React.FC = () => {
           <div>
             <span className="text-[#60a5fa]">Mouse:</span> Rotate/Zoom
           </div>
+          <div>
+            <span className="text-[#4ade80]">Ctrl+S:</span> Save
+          </div>
         </div>
       </div>
+
+      {/* Save Project Modal */}
+      <SaveProjectModal
+        isOpen={showSaveModal}
+        onClose={() => setShowSaveModal(false)}
+        onSave={handleSaveNewProject}
+        existingProjects={getExistingProjectNames()}
+      />
     </div>
   );
 };
