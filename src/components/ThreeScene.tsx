@@ -1,9 +1,8 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as THREE from 'three';
 import { TrackballControls } from 'three-stdlib';
 import { useControls, button, folder } from 'leva';
 import { CircleData, CircleGridConfig, ShapeType } from '../types';
-import './leva.css';
 import {
   createShapeGeometry,
   createShapeStrokeGeometry,
@@ -11,6 +10,13 @@ import {
   assignColorGroups,
   applyCylindricalTransform
 } from '../utils/circleGeometry';
+import ProjectManager from './ProjectManager';
+
+interface Project {
+  name: string;
+  settings: Record<string, unknown>;
+  timestamp: number;
+}
 
 const ThreeScene: React.FC = () => {
   const mountRef = useRef<HTMLDivElement>(null);
@@ -20,9 +26,14 @@ const ThreeScene: React.FC = () => {
   const controlsRef = useRef<TrackballControls | null>(null);
   const circlesRef = useRef<CircleData[]>([]);
   const animationIdRef = useRef<number>();
+  const [showProjectManager, setShowProjectManager] = useState(false);
+  const [isLoadingProject, setIsLoadingProject] = useState(false);
+  const [forceUpdate, setForceUpdate] = useState(0);
+  const [activeProject, setActiveProject] = useState<string | null>(null);
 
   // localStorage 키
   const STORAGE_KEY = 'circle-matrix-settings';
+  const PROJECTS_KEY = 'circle-matrix-projects';
 
   // 랜덤 시드 관리
   const colorSeedRef = useRef<number>(Math.floor(Math.random() * 1000000));
@@ -75,10 +86,10 @@ const ThreeScene: React.FC = () => {
     cameraMinDistance: 5,
     cameraMaxDistance: 50,
     cameraEnablePan: true,
-    rotateSpeed: 1.0,
-    zoomSpeed: 1.2,
-    panSpeed: 0.8,
-    dynamicDampingFactor: 0.2
+    rotateSpeed: 2.0,
+    zoomSpeed: 1.5,
+    panSpeed: 1.5,
+    dynamicDampingFactor: 0.1
   };
 
   const getDefaultValues = () => {
@@ -103,7 +114,10 @@ const ThreeScene: React.FC = () => {
     return defaultSettings;
   };
 
-  const initialValues = getDefaultValues();
+
+
+
+
 
 
   // Leva 컨트롤의 특정 값을 리셋하는 함수
@@ -111,6 +125,8 @@ const ThreeScene: React.FC = () => {
     console.log('Resetting leva values:', valuesToReset);
     set(valuesToReset);
   };
+
+  const initialValues = getDefaultValues();
 
   // Leva 컨트롤 정의
   const [controls, set] = useControls(() => ({
@@ -128,6 +144,8 @@ const ThreeScene: React.FC = () => {
       createCircles();
       saveSettings();
     }),
+    'Share URL': button(() => shareProjectURL()),
+    'Quick Save': button(() => saveToActiveProject()),
 
     // 📐 Structure
     Structure: folder({
@@ -163,8 +181,7 @@ const ThreeScene: React.FC = () => {
         rectangleHeight: { value: initialValues.rectangleHeight, min: 0.2, max: 12 },
         enableWidthScaling: initialValues.enableWidthScaling,
         widthScaleFactor: { value: initialValues.widthScaleFactor, min: 1.0, max: 10.0 }
-      }, { collapsed: false }),
-      borderThickness: { value: initialValues.borderThickness, min: 0.05, max: 0.5 }
+      }, { collapsed: false })
     }, { collapsed: true }),
 
     // 🔄 Transforms
@@ -208,6 +225,12 @@ const ThreeScene: React.FC = () => {
     // 🎨 Appearance
     Appearance: folder({
       backgroundColor: initialValues.backgroundColor,
+      'Reset Border': button(() => {
+        resetLevaValues({
+          borderThickness: defaultSettings.borderThickness
+        });
+      }),
+      borderThickness: { value: initialValues.borderThickness, min: 0.05, max: 0.5 },
       'Color Group 1': folder({
         'Reset Group 1': button(() => {
           resetLevaValues({
@@ -258,10 +281,7 @@ const ThreeScene: React.FC = () => {
         resetLevaValues({
           cameraPositionX: defaultSettings.cameraPositionX,
           cameraPositionY: defaultSettings.cameraPositionY,
-          cameraPositionZ: defaultSettings.cameraPositionZ,
-          cameraMinDistance: defaultSettings.cameraMinDistance,
-          cameraMaxDistance: defaultSettings.cameraMaxDistance,
-          cameraEnablePan: defaultSettings.cameraEnablePan
+          cameraPositionZ: defaultSettings.cameraPositionZ
         });
       }),
       Position: folder({
@@ -270,16 +290,301 @@ const ThreeScene: React.FC = () => {
         cameraPositionZ: { value: initialValues.cameraPositionZ, min: -50, max: 50 }
       }, { collapsed: false }),
       Settings: folder({
-        cameraMinDistance: { value: initialValues.cameraMinDistance, min: 1, max: 20 },
-        cameraMaxDistance: { value: initialValues.cameraMaxDistance, min: 20, max: 200 },
-        cameraEnablePan: initialValues.cameraEnablePan,
-        rotateSpeed: { value: initialValues.rotateSpeed, min: 0.1, max: 5.0 },
-        zoomSpeed: { value: initialValues.zoomSpeed, min: 0.1, max: 5.0 },
-        panSpeed: { value: initialValues.panSpeed, min: 0.1, max: 5.0 },
-        dynamicDampingFactor: { value: initialValues.dynamicDampingFactor, min: 0.0, max: 1.0 }
+        // Camera settings removed - using default values only
       }, { collapsed: false })
     }, { collapsed: true })
   }));
+
+  // 현재 설정을 가져오는 함수
+  const getCurrentSettings = useCallback(() => {
+    return {
+      ...controls,
+      colorSeed: colorSeedRef.current
+    };
+  }, [controls]);
+
+  // 설정을 적용하는 함수 (새로고침 없이)
+  const applySettings = useCallback((settings: Record<string, unknown>) => {
+    console.log('🔧 applySettings called with:', Object.keys(settings));
+    setIsLoadingProject(true);
+
+    // 색상 시드 적용
+    if (settings.colorSeed !== undefined) {
+      colorSeedRef.current = settings.colorSeed as number;
+      console.log('🎨 Color seed set to:', colorSeedRef.current);
+    }
+
+    // 설정을 localStorage에 저장
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+    console.log('💾 Settings saved to localStorage');
+
+    // Leva 컨트롤 값들을 단계적으로 업데이트
+    console.log('🎛️ Applying settings to Leva controls...');
+
+    const applySettingsWithDelay = async () => {
+      const settingsToApply = Object.keys(settings).filter(key =>
+        key !== 'colorSeed' && settings[key] !== undefined
+      );
+
+      console.log(`📋 Applying ${settingsToApply.length} settings...`);
+
+      // 먼저 한 번에 적용 시도
+      try {
+        const batchSettings: Record<string, unknown> = {};
+        settingsToApply.forEach(key => {
+          batchSettings[key] = settings[key];
+        });
+
+        console.log('🎯 Attempting batch update...');
+        set(batchSettings);
+        console.log('✅ Batch update successful');
+        return;
+      } catch {
+        console.warn('⚠️ Batch update failed, trying individual updates...');
+      }
+
+      // 개별 적용
+      for (const key of settingsToApply) {
+        try {
+          console.log(`🔧 Setting ${key} to:`, settings[key]);
+          set({ [key]: settings[key] });
+          // 각 설정 사이에 지연
+          await new Promise(resolve => setTimeout(resolve, 50));
+        } catch (error) {
+          console.warn(`⚠️ Failed to set ${key}:`, error);
+        }
+      }
+      console.log('✅ All settings applied');
+    };
+
+    applySettingsWithDelay();
+
+    // 강제 업데이트로 씬 재생성
+    setTimeout(() => {
+      setForceUpdate(prev => prev + 1);
+      setIsLoadingProject(false);
+      console.log('✅ Project loading completed');
+    }, 1500);
+  }, [set]);
+
+  // 프로젝트 로드 후 씬 업데이트를 위한 함수
+  const loadProjectAndUpdate = useCallback((name: string) => {
+    console.log('🔄 loadProjectAndUpdate called for:', name);
+    const savedProjects = localStorage.getItem(PROJECTS_KEY);
+    console.log('📦 Saved projects:', savedProjects ? 'exists' : 'not found');
+
+    if (!savedProjects) {
+      console.log('❌ No saved projects found');
+      return null;
+    }
+
+    const projects: Project[] = JSON.parse(savedProjects);
+    console.log('📋 Projects found:', projects.length);
+    console.log('📝 Available projects:', projects.map(p => p.name));
+
+    const project = projects.find(p => p.name === name);
+    console.log('🎯 Project found:', project ? project.name : 'not found');
+    console.log('🎯 Project details:', project ? {
+      name: project.name,
+      timestamp: new Date(project.timestamp).toLocaleString(),
+      settingsKeys: Object.keys(project.settings)
+    } : 'null');
+
+    if (project) {
+      console.log('✅ Applying project settings...');
+      console.log('🔧 Project settings preview:', {
+        rows: project.settings.rows,
+        cols: project.settings.cols,
+        backgroundColor: project.settings.backgroundColor,
+        colorSeed: project.settings.colorSeed
+      });
+      applySettings(project.settings);
+      setActiveProject(name); // 활성 프로젝트 설정
+      return project;
+    }
+    console.log('❌ Project not found');
+    return null;
+  }, [applySettings]);
+
+  // 프로젝트 저장 함수
+  const saveProject = useCallback((name: string) => {
+    console.log('💾 saveProject called for:', name);
+    const currentSettings = getCurrentSettings();
+    const project: Project = {
+      name,
+      settings: currentSettings,
+      timestamp: Date.now()
+    };
+
+    console.log('📝 Project to save:', {
+      name: project.name,
+      timestamp: new Date(project.timestamp).toLocaleString(),
+      settingsKeys: Object.keys(project.settings)
+    });
+
+    // Structure 변수들이 모두 저장되는지 확인
+    console.log('🔍 Structure variables check:', {
+      rows: currentSettings.rows,
+      cols: currentSettings.cols,
+      rowSpacing: currentSettings.rowSpacing,
+      colSpacing: currentSettings.colSpacing,
+      shapeType: currentSettings.shapeType,
+      circleRadius: currentSettings.circleRadius,
+      rectangleWidth: currentSettings.rectangleWidth,
+      rectangleHeight: currentSettings.rectangleHeight,
+      enableWidthScaling: currentSettings.enableWidthScaling,
+      widthScaleFactor: currentSettings.widthScaleFactor
+    });
+
+    const savedProjects = localStorage.getItem(PROJECTS_KEY);
+    const projects: Project[] = savedProjects ? JSON.parse(savedProjects) : [];
+    console.log('📦 Existing projects:', projects.map(p => p.name));
+
+    // 같은 이름의 프로젝트가 있으면 업데이트, 없으면 추가
+    const existingIndex = projects.findIndex(p => p.name === name);
+    if (existingIndex >= 0) {
+      console.log('🔄 Updating existing project at index:', existingIndex);
+      projects[existingIndex] = project;
+    } else {
+      console.log('➕ Adding new project');
+      projects.push(project);
+    }
+
+    localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
+    console.log('💾 Projects saved. Total projects:', projects.length);
+
+    // 활성 프로젝트로 설정
+    setActiveProject(name);
+
+    return projects;
+  }, [getCurrentSettings]);
+
+  // 활성 프로젝트에 저장하는 함수
+  const saveToActiveProject = useCallback(() => {
+    if (!activeProject) {
+      setMessage('No active project to save to.');
+      setTimeout(() => setMessage(''), 3000);
+      return;
+    }
+
+    console.log('💾 saveToActiveProject called for:', activeProject);
+    const updatedProjects = saveProject(activeProject);
+    setMessage(`Saved to active project: "${activeProject}"`);
+    setTimeout(() => setMessage(''), 3000);
+    return updatedProjects;
+  }, [activeProject, saveProject]);
+
+  // 프로젝트 로드 함수
+  const loadProject = useCallback((name: string) => {
+    console.log('📂 loadProject called for:', name);
+    return loadProjectAndUpdate(name);
+  }, [loadProjectAndUpdate]);
+
+  // 프로젝트 삭제 함수
+  const deleteProject = useCallback((name: string) => {
+    const savedProjects = localStorage.getItem(PROJECTS_KEY);
+    if (!savedProjects) return [];
+
+    const projects: Project[] = JSON.parse(savedProjects);
+    const updatedProjects = projects.filter(p => p.name !== name);
+    localStorage.setItem(PROJECTS_KEY, JSON.stringify(updatedProjects));
+    return updatedProjects;
+  }, []);
+
+  // 프로젝트 이름 변경 함수
+  const renameProject = useCallback((oldName: string, newName: string) => {
+    const savedProjects = localStorage.getItem(PROJECTS_KEY);
+    if (!savedProjects) return [];
+
+    const projects: Project[] = JSON.parse(savedProjects);
+
+    // 새 이름이 이미 존재하는지 확인
+    if (projects.some(p => p.name === newName)) {
+      throw new Error(`Project "${newName}" already exists.`);
+    }
+
+    // 프로젝트 찾기
+    const projectIndex = projects.findIndex(p => p.name === oldName);
+    if (projectIndex === -1) {
+      throw new Error(`Project "${oldName}" not found.`);
+    }
+
+    // 이름 변경
+    const updatedProjects = [...projects];
+    updatedProjects[projectIndex] = {
+      ...updatedProjects[projectIndex],
+      name: newName,
+      timestamp: Date.now() // 타임스탬프 업데이트
+    };
+
+    localStorage.setItem(PROJECTS_KEY, JSON.stringify(updatedProjects));
+    return updatedProjects;
+  }, []);
+
+  // 프로젝트 목록 가져오기 함수
+  const getProjects = useCallback(() => {
+    const savedProjects = localStorage.getItem(PROJECTS_KEY);
+    return savedProjects ? JSON.parse(savedProjects) : [];
+  }, []);
+
+  // URL에서 프로젝트 설정 로드
+  const loadProjectFromURL = useCallback(() => {
+    console.log('🔍 loadProjectFromURL called');
+    const urlParams = new URLSearchParams(window.location.search);
+    const projectData = urlParams.get('project');
+    console.log('📋 URL project data:', projectData ? 'exists' : 'not found');
+
+    if (projectData) {
+      try {
+        console.log('🔄 Decoding project data...');
+        const settings = JSON.parse(decodeURIComponent(projectData));
+        console.log('✅ Settings decoded:', Object.keys(settings));
+
+        // 색상 시드 적용
+        if (settings.colorSeed !== undefined) {
+          colorSeedRef.current = settings.colorSeed as number;
+          console.log('🎨 Color seed applied:', colorSeedRef.current);
+        }
+
+        // 설정을 localStorage에 저장
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+        console.log('💾 Settings saved to localStorage');
+
+        // URL에서 프로젝트 파라미터 제거하여 무한 루프 방지
+        const newURL = window.location.pathname;
+        window.history.replaceState({}, '', newURL);
+        console.log('🧹 URL cleaned:', newURL);
+
+        setMessage('Project loaded from URL successfully.');
+        setTimeout(() => setMessage(''), 3000);
+        return true;
+      } catch (error) {
+        console.error('❌ Failed to load project from URL:', error);
+        return false;
+      }
+    }
+    console.log('📭 No project data in URL');
+    return false;
+  }, []);
+
+  // 현재 설정을 URL로 공유
+  const shareProjectURL = useCallback(() => {
+    const currentSettings = getCurrentSettings();
+    const projectData = encodeURIComponent(JSON.stringify(currentSettings));
+    const shareURL = `${window.location.origin}${window.location.pathname}?project=${projectData}`;
+
+    // 클립보드에 복사
+    navigator.clipboard.writeText(shareURL).then(() => {
+      setMessage('Share URL copied to clipboard!');
+      setTimeout(() => setMessage(''), 3000);
+    }).catch(() => {
+      // 클립보드 복사 실패 시 URL을 alert로 표시
+      alert(`Share URL:\n${shareURL}`);
+    });
+  }, [getCurrentSettings]);
+
+  // 메시지 상태 추가
+  const [message, setMessage] = useState('');
 
   // RGBA 색상을 CSS 색상 문자열로 변환
   const rgbToCss = (rgba: { r: number; g: number; b: number; a: number }) => {
@@ -287,13 +592,13 @@ const ThreeScene: React.FC = () => {
   };
 
   // 모든 설정 저장
-  const saveSettings = () => {
+  const saveSettings = useCallback(() => {
     const settings = {
       ...controls,
       colorSeed: colorSeedRef.current
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-  };
+  }, [controls]);
 
   // 모든 설정 로드
   const loadSettings = () => {
@@ -352,13 +657,13 @@ const ThreeScene: React.FC = () => {
 
     // 카메라 컨트롤 설정
     const trackballControls = new TrackballControls(camera, renderer.domElement);
-    trackballControls.minDistance = controls.cameraMinDistance;
-    trackballControls.maxDistance = controls.cameraMaxDistance;
-    trackballControls.noPan = !controls.cameraEnablePan;
-    trackballControls.rotateSpeed = controls.rotateSpeed;
-    trackballControls.zoomSpeed = controls.zoomSpeed;
-    trackballControls.panSpeed = controls.panSpeed;
-    trackballControls.dynamicDampingFactor = controls.dynamicDampingFactor;
+    trackballControls.minDistance = defaultSettings.cameraMinDistance;
+    trackballControls.maxDistance = defaultSettings.cameraMaxDistance;
+    trackballControls.noPan = !defaultSettings.cameraEnablePan;
+    trackballControls.rotateSpeed = defaultSettings.rotateSpeed;
+    trackballControls.zoomSpeed = defaultSettings.zoomSpeed;
+    trackballControls.panSpeed = defaultSettings.panSpeed;
+    trackballControls.dynamicDampingFactor = defaultSettings.dynamicDampingFactor;
 
     controlsRef.current = trackballControls;
   };
@@ -558,24 +863,72 @@ const ThreeScene: React.FC = () => {
     }
   }, [controls.backgroundColor]);
 
-  
+
 
   useEffect(() => {
     if (controlsRef.current) {
-      controlsRef.current.minDistance = controls.cameraMinDistance;
-      controlsRef.current.maxDistance = controls.cameraMaxDistance;
+      controlsRef.current.minDistance = defaultSettings.cameraMinDistance;
+      controlsRef.current.maxDistance = defaultSettings.cameraMaxDistance;
       if (controlsRef.current instanceof TrackballControls) {
-        controlsRef.current.noPan = !controls.cameraEnablePan;
-        controlsRef.current.rotateSpeed = controls.rotateSpeed;
-        controlsRef.current.zoomSpeed = controls.zoomSpeed;
-        controlsRef.current.panSpeed = controls.panSpeed;
-        controlsRef.current.dynamicDampingFactor = controls.dynamicDampingFactor;
+        controlsRef.current.noPan = !defaultSettings.cameraEnablePan;
+        controlsRef.current.rotateSpeed = defaultSettings.rotateSpeed;
+        controlsRef.current.zoomSpeed = defaultSettings.zoomSpeed;
+        controlsRef.current.panSpeed = defaultSettings.panSpeed;
+        controlsRef.current.dynamicDampingFactor = defaultSettings.dynamicDampingFactor;
       }
     }
-  }, [controls.cameraMinDistance, controls.cameraMaxDistance, controls.cameraEnablePan, controls.rotateSpeed, controls.zoomSpeed, controls.panSpeed, controls.dynamicDampingFactor]);
+  }, []);
+
+  // Leva 카메라 위치 컨트롤 → 카메라 실시간 적용
+  useEffect(() => {
+    if (controlsRef.current && cameraRef.current) {
+      const camera = cameraRef.current;
+      camera.position.set(controls.cameraPositionX, controls.cameraPositionY, controls.cameraPositionZ);
+      controlsRef.current.update();
+    }
+  }, [controls.cameraPositionX, controls.cameraPositionY, controls.cameraPositionZ]);
+
+  // TrackballControls 이벤트 → Leva 값 동기화
+  useEffect(() => {
+    if (controlsRef.current && cameraRef.current) {
+      const controls = controlsRef.current;
+      const camera = cameraRef.current;
+      let isUpdating = false;
+
+      const handleChange = () => {
+        if (!isUpdating) {
+          isUpdating = true;
+          requestAnimationFrame(() => {
+            // 마우스 드래그/줌/팬으로 카메라가 움직일 때 Leva 값 업데이트
+            set({
+              cameraPositionX: camera.position.x,
+              cameraPositionY: camera.position.y,
+              cameraPositionZ: camera.position.z
+            });
+            isUpdating = false;
+          });
+        }
+      };
+
+      // change 이벤트와 함께 update 이벤트도 리스닝
+      controls.addEventListener('change', handleChange);
+      controls.addEventListener('update', handleChange);
+
+      return () => {
+        controls.removeEventListener('change', handleChange);
+        controls.removeEventListener('update', handleChange);
+      };
+    }
+  }, [set]);
 
   useEffect(() => {
+    console.log('🚀 Component initialized');
     loadSettings();
+
+    // URL에서 프로젝트 로드 시도
+    const urlLoaded = loadProjectFromURL();
+    console.log('🌐 URL load result:', urlLoaded);
+
     initScene();
     createCircles();
     animate();
@@ -595,14 +948,152 @@ const ThreeScene: React.FC = () => {
       }
       window.removeEventListener('resize', handleResize);
     };
-  }, []);
+  }, [loadProjectFromURL]);
+
+  // WASD 키보드 컨트롤
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!controlsRef.current) return;
+
+      const moveSpeed = 0.5;
+      const camera = controlsRef.current.object;
+
+      switch (event.code) {
+        case 'KeyW':
+          camera.position.z -= moveSpeed;
+          // Leva 컨트롤 업데이트
+          set({ cameraPositionZ: camera.position.z });
+          break;
+        case 'KeyS':
+          camera.position.z += moveSpeed;
+          // Leva 컨트롤 업데이트
+          set({ cameraPositionZ: camera.position.z });
+          break;
+        case 'KeyA':
+          camera.position.x -= moveSpeed;
+          // Leva 컨트롤 업데이트
+          set({ cameraPositionX: camera.position.x });
+          break;
+        case 'KeyD':
+          camera.position.x += moveSpeed;
+          // Leva 컨트롤 업데이트
+          set({ cameraPositionX: camera.position.x });
+          break;
+        case 'KeyQ':
+          camera.position.y += moveSpeed;
+          // Leva 컨트롤 업데이트
+          set({ cameraPositionY: camera.position.y });
+          break;
+        case 'KeyE':
+          camera.position.y -= moveSpeed;
+          // Leva 컨트롤 업데이트
+          set({ cameraPositionY: camera.position.y });
+          break;
+      }
+
+      // 카메라 위치가 변경되면 controls 업데이트
+      controlsRef.current.update();
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [set]);
 
   // Auto-save when controls change
   useEffect(() => {
     saveSettings();
-  }, [controls]);
+  }, [controls, saveSettings]);
 
-  return <div ref={mountRef} className="w-full h-screen" />;
+  // 강제 업데이트 시 씬 재생성
+  useEffect(() => {
+    if (forceUpdate > 0) {
+      console.log('🔄 Force updating scene...');
+      if (sceneRef.current) {
+        createCircles();
+      }
+    }
+  }, [forceUpdate]);
+
+
+
+  return (
+    <div className="relative w-full h-screen">
+      <div ref={mountRef} className="w-full h-screen" />
+
+      {/* Message Display */}
+      {message && (
+        <div className="absolute top-4 right-4 z-20 bg-[#2a2a2a] text-[#4ade80] px-4 py-2 rounded-lg shadow-lg border border-[#3a3a3a] font-mono text-sm">
+          {message}
+        </div>
+      )}
+
+      {/* Loading Indicator */}
+      {isLoadingProject && (
+        <div className="absolute top-4 right-4 z-20 bg-[#2a2a2a] text-[#60a5fa] px-4 py-2 rounded-lg shadow-lg border border-[#3a3a3a] font-mono text-sm flex items-center gap-2">
+          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#60a5fa]"></div>
+          Loading project settings...
+        </div>
+      )}
+
+      {/* Project Manager Sidebar */}
+      <div className={`fixed top-0 left-0 h-full z-10 transition-transform duration-300 ease-in-out ${showProjectManager ? 'translate-x-0' : '-translate-x-full'
+        }`}>
+        <ProjectManager
+          projects={getProjects()}
+          activeProject={activeProject}
+          onSaveProject={saveProject}
+          onLoadProject={loadProject}
+          onDeleteProject={deleteProject}
+          onRenameProject={renameProject}
+          onSaveToActiveProject={saveToActiveProject}
+          onClose={() => setShowProjectManager(false)}
+          onShareProject={(settings) => {
+            const projectData = encodeURIComponent(JSON.stringify(settings));
+            const shareURL = `${window.location.origin}${window.location.pathname}?project=${projectData}`;
+
+            navigator.clipboard.writeText(shareURL).then(() => {
+              setMessage('Project URL copied to clipboard!');
+              setTimeout(() => setMessage(''), 3000);
+            }).catch(() => {
+              alert(`Share URL:\n${shareURL}`);
+            });
+          }}
+        />
+      </div>
+
+      {/* Toggle Button */}
+      <button
+        onClick={() => setShowProjectManager(!showProjectManager)}
+        className={`fixed top-4 left-4 z-20 p-2 rounded-lg transition-all duration-300 ${showProjectManager
+          ? 'opacity-0 pointer-events-none'
+          : 'bg-[#1a1a1a] text-[#888] hover:text-[#e0e0e0] hover:bg-[#2a2a2a]'
+          }`}
+        title="Open Project Manager"
+      >
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+      </button>
+
+      {/* Camera Controls Guide */}
+      <div className="fixed bottom-4 left-4 z-20 bg-[#1a1a1a] text-[#888] px-3 py-2 rounded-lg shadow-lg border border-[#3a3a3a] font-mono text-xs">
+        <div className="flex items-center gap-4">
+          <div>
+            <span className="text-[#60a5fa]">WASD:</span> Move Camera
+          </div>
+          <div>
+            <span className="text-[#60a5fa]">QE:</span> Up/Down
+          </div>
+          <div>
+            <span className="text-[#60a5fa]">Mouse:</span> Rotate/Zoom
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default ThreeScene;

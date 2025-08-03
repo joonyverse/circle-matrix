@@ -32,9 +32,7 @@ export interface GuiControls {
   rotationX: number;
   rotationY: number;
   rotationZ: number;
-  cameraMinDistance: number;
-  cameraMaxDistance: number;
-  cameraEnablePan: boolean;
+  // Camera settings removed - using default values only
   cameraPositionX: number;
   cameraPositionY: number;
   cameraPositionZ: number;
