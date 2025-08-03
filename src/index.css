@@ -425,6 +425,11 @@ body {
     background: rgba(255, 255, 255, 0.1) !important;
 }
 
+/* Dark theme select dropdown hover */
+[data-theme="dark"] .custom-dropdown-enter button:hover:not([disabled]):not([style*="background: var(--accent-blue)"]) {
+    background: rgba(255, 255, 255, 0.1) !important;
+}
+
 /* Modal Backdrop */
 .modal-backdrop {
     background-color: rgba(0, 0, 0, 0.3);

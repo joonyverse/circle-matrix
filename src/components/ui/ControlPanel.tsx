@@ -314,6 +314,7 @@ interface SelectProps {
     onChange: (value: string) => void;
     resetValue?: string;
     onReset?: () => void;
+    disabledOptions?: string[];
 }
 
 export const Select: React.FC<SelectProps> = ({
@@ -322,7 +323,8 @@ export const Select: React.FC<SelectProps> = ({
     options,
     onChange,
     resetValue,
-    onReset
+    onReset,
+    disabledOptions = []
 }) => {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
@@ -378,20 +380,31 @@ export const Select: React.FC<SelectProps> = ({
                         background: 'var(--dropdown-bg)',
                         border: '1px solid var(--dropdown-border)'
                     }}>
-                        {Object.entries(options).map(([key, optionLabel]) => (
-                            <button
-                                key={key}
-                                type="button"
-                                onClick={() => {
-                                    onChange(key);
-                                    setIsOpen(false);
-                                }}
-                                className={`w-full px-3 py-2 text-sm text-left smooth-transition ${key === value ? 'bg-[#007AFF] text-white' : 'hover:bg-gray-100'}`}
-                                style={{ color: key === value ? 'white' : 'var(--text-primary)' }}
-                            >
-                                {optionLabel}
-                            </button>
-                        ))}
+                        {Object.entries(options).map(([key, optionLabel]) => {
+                            const isDisabled = disabledOptions.includes(key);
+                            return (
+                                <button
+                                    key={key}
+                                    type="button"
+                                    onClick={() => {
+                                        if (!isDisabled) {
+                                            onChange(key);
+                                            setIsOpen(false);
+                                        }
+                                    }}
+                                    className={`w-full px-3 py-2 text-sm text-left smooth-transition ${key === value ? 'bg-[#007AFF] text-white' :
+                                            isDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'
+                                        }`}
+                                    style={{
+                                        color: key === value ? 'white' :
+                                            isDisabled ? 'var(--text-tertiary)' : 'var(--text-primary)'
+                                    }}
+                                    disabled={isDisabled}
+                                >
+                                    {optionLabel}
+                                </button>
+                            );
+                        })}
                     </div>
                 )}
             </div>
@@ -1121,10 +1134,11 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                         <Select
                             label="Control Type"
                             value={cameraControlType}
-                            options={{ trackball: 'Trackball', orbit: 'Orbit' }}
+                            options={{ trackball: 'Trackball (Disabled)', orbit: 'Orbit' }}
                             onChange={(value) => onCameraControlTypeChange(value as 'trackball' | 'orbit')}
                             resetValue="orbit"
                             onReset={() => onCameraControlTypeChange('orbit')}
+                            disabledOptions={['trackball']}
                         />
                         <Folder title="Position" defaultCollapsed={false}>
                             <Slider
