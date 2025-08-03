@@ -104,14 +104,74 @@ export const Slider: React.FC<SliderProps> = ({
     resetValue,
     onReset
 }) => {
+    const [isEditing, setIsEditing] = useState(false);
+    const [inputValue, setInputValue] = useState(value.toString());
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    const handleEditClick = () => {
+        setInputValue(value.toString());
+        setIsEditing(true);
+        setTimeout(() => {
+            inputRef.current?.focus();
+            inputRef.current?.select();
+        }, 0);
+    };
+
+    const handleEditChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const newInputValue = e.target.value;
+        setInputValue(newInputValue);
+
+        if (newInputValue === '' || newInputValue === '-') {
+            // 빈 문자열이나 마이너스 기호만 있을 때는 값을 업데이트하지 않음
+            return;
+        } else {
+            const newValue = parseFloat(newInputValue);
+            if (!isNaN(newValue)) {
+                onChange(newValue);
+            }
+        }
+    };
+
+    const handleEditBlur = () => {
+        setIsEditing(false);
+        // 입력이 완료되면 현재 값으로 inputValue 업데이트
+        setInputValue(value.toString());
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Escape') {
+            setIsEditing(false);
+            setInputValue(value.toString());
+        }
+    };
+
     return (
         <div className="space-y-2">
             <div className="flex items-center justify-between">
                 <label className="text-sm text-[#666] font-medium">{label}</label>
                 <div className="flex items-center gap-2">
-                    <span className="text-xs text-[#007AFF] font-mono bg-white/10 px-2 py-1 rounded">
-                        {value.toFixed(2)}
-                    </span>
+                    {isEditing ? (
+                        <input
+                            ref={inputRef}
+                            type="number"
+                            min={min}
+                            max={max}
+                            step={step}
+                            value={inputValue}
+                            onChange={handleEditChange}
+                            onBlur={handleEditBlur}
+                            onKeyDown={handleKeyDown}
+                            className="text-xs text-[#007AFF] font-mono bg-white/20 px-2 py-1 rounded border border-[#007AFF] focus:outline-none focus:border-[#0056CC] w-16 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        />
+                    ) : (
+                        <button
+                            onClick={handleEditClick}
+                            className="text-xs text-[#007AFF] font-mono bg-white/10 px-2 py-1 rounded hover:bg-white/20 smooth-transition cursor-pointer"
+                            title="Click to edit"
+                        >
+                            {value.toFixed(2)}
+                        </button>
+                    )}
                     {onReset && resetValue !== undefined && (
                         <button
                             onClick={onReset}
@@ -170,9 +230,15 @@ export const NumberInput: React.FC<NumberInputProps> = ({
     };
 
     const handleEditChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const newValue = parseFloat(e.target.value);
-        if (!isNaN(newValue)) {
-            onChange(newValue);
+        const inputValue = e.target.value;
+        if (inputValue === '' || inputValue === '-') {
+            // 빈 문자열이나 마이너스 기호만 있을 때는 값을 업데이트하지 않음
+            return;
+        } else {
+            const newValue = parseFloat(inputValue);
+            if (!isNaN(newValue)) {
+                onChange(newValue);
+            }
         }
     };
 
@@ -363,6 +429,8 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
     };
 
     const [hexValue, setHexValue] = useState(rgbToHex(value.r, value.g, value.b));
+    const [isAlphaEditing, setIsAlphaEditing] = useState(false);
+    const alphaInputRef = useRef<HTMLInputElement>(null);
 
     const handleColorChange = (hex: string) => {
         const rgb = hexToRgb(hex);
@@ -386,6 +454,37 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
 
     const handleAlphaChange = (alpha: number) => {
         onChange({ ...value, a: alpha });
+    };
+
+    const handleAlphaEditClick = () => {
+        setIsAlphaEditing(true);
+        setTimeout(() => {
+            alphaInputRef.current?.focus();
+            alphaInputRef.current?.select();
+        }, 0);
+    };
+
+    const handleAlphaEditChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const inputValue = e.target.value;
+        if (inputValue === '' || inputValue === '-') {
+            // 빈 문자열이나 마이너스 기호만 있을 때는 값을 업데이트하지 않음
+            return;
+        } else {
+            const newValue = parseFloat(inputValue);
+            if (!isNaN(newValue) && newValue >= 0 && newValue <= 1) {
+                handleAlphaChange(newValue);
+            }
+        }
+    };
+
+    const handleAlphaEditBlur = () => {
+        setIsAlphaEditing(false);
+    };
+
+    const handleAlphaKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Escape') {
+            setIsAlphaEditing(false);
+        }
     };
 
     // value가 변경될 때 hexValue 업데이트
@@ -436,9 +535,28 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
                         onChange={(e) => handleAlphaChange(parseFloat(e.target.value))}
                         className="flex-1 h-2 bg-white/20 rounded-lg appearance-none cursor-pointer slider"
                     />
-                    <span className="text-xs text-[#007AFF] font-mono w-8">
-                        {value.a.toFixed(2)}
-                    </span>
+                    {isAlphaEditing ? (
+                        <input
+                            ref={alphaInputRef}
+                            type="number"
+                            min="0"
+                            max="1"
+                            step="0.01"
+                            value={value.a}
+                            onChange={handleAlphaEditChange}
+                            onBlur={handleAlphaEditBlur}
+                            onKeyDown={handleAlphaKeyDown}
+                            className="text-xs text-[#007AFF] font-mono bg-white/20 px-2 py-1 rounded border border-[#007AFF] focus:outline-none focus:border-[#0056CC] w-12 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        />
+                    ) : (
+                        <button
+                            onClick={handleAlphaEditClick}
+                            className="text-xs text-[#007AFF] font-mono bg-white/10 px-2 py-1 rounded hover:bg-white/20 smooth-transition cursor-pointer w-8"
+                            title="Click to edit alpha"
+                        >
+                            {value.a.toFixed(2)}
+                        </button>
+                    )}
                 </div>
             </div>
         </div>

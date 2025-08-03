@@ -786,15 +786,23 @@ const ThreeScene: React.FC = () => {
       controlsRef.current = null;
     }
 
-    // 기존 렌더러 DOM 요소 제거
-    if (rendererRef.current && mountRef.current) {
-      try {
-        if (mountRef.current.contains(rendererRef.current.domElement)) {
-          mountRef.current.removeChild(rendererRef.current.domElement);
+    // 기존 렌더러 정리
+    if (rendererRef.current) {
+      // 기존 렌더러의 dispose 호출
+      rendererRef.current.dispose();
+
+      // DOM 요소 제거
+      if (mountRef.current) {
+        try {
+          if (mountRef.current.contains(rendererRef.current.domElement)) {
+            mountRef.current.removeChild(rendererRef.current.domElement);
+          }
+        } catch (error) {
+          console.warn('Failed to remove existing renderer DOM element:', error);
         }
-      } catch (error) {
-        console.warn('Failed to remove existing renderer DOM element:', error);
       }
+
+      rendererRef.current = undefined;
     }
 
     const scene = new THREE.Scene();
@@ -850,7 +858,7 @@ const ThreeScene: React.FC = () => {
     }
 
     controlsRef.current = controls;
-  }, [settings.backgroundColor, settings.cameraPositionX, settings.cameraPositionY, settings.cameraPositionZ, cameraDefaults]);
+  }, [settings.cameraPositionX, settings.cameraPositionY, settings.cameraPositionZ, cameraDefaults]);
 
   const createCircles = useCallback(() => {
     if (!sceneRef.current) return;
@@ -975,6 +983,60 @@ const ThreeScene: React.FC = () => {
     circlesRef.current = circles;
   }, [settings, getConfig, rgbToCss]);
 
+  const updateColors = useCallback(() => {
+    circlesRef.current.forEach(circle => {
+      if (!circle.mesh) return;
+
+      // 색상 그룹에 따른 재료 선택
+      let fillColor, strokeColor, fillOpacity, strokeOpacity;
+      switch (circle.colorGroup) {
+        case 0:
+          fillColor = rgbToCss(settings.fill1);
+          strokeColor = settings.syncColors1 ? rgbToCss(settings.fill1) : rgbToCss(settings.stroke1);
+          fillOpacity = settings.fill1.a;
+          strokeOpacity = settings.syncColors1 ? settings.fill1.a : settings.stroke1.a;
+          break;
+        case 1:
+          fillColor = rgbToCss(settings.fill2);
+          strokeColor = settings.syncColors2 ? rgbToCss(settings.fill2) : rgbToCss(settings.stroke2);
+          fillOpacity = settings.fill2.a;
+          strokeOpacity = settings.syncColors2 ? settings.fill2.a : settings.stroke2.a;
+          break;
+        case 2:
+          fillColor = rgbToCss(settings.fill3);
+          strokeColor = settings.syncColors3 ? rgbToCss(settings.fill3) : rgbToCss(settings.stroke3);
+          fillOpacity = settings.fill3.a;
+          strokeOpacity = settings.syncColors3 ? settings.fill3.a : settings.stroke3.a;
+          break;
+        default:
+          fillColor = rgbToCss(settings.fill1);
+          strokeColor = settings.syncColors1 ? rgbToCss(settings.fill1) : rgbToCss(settings.stroke1);
+          fillOpacity = settings.fill1.a;
+          strokeOpacity = settings.syncColors1 ? settings.fill1.a : settings.stroke1.a;
+      }
+
+      // 기존 재질 업데이트
+      const children = circle.mesh.children;
+      if (children.length >= 2) {
+        // fill mesh (첫 번째 자식)
+        const fillMesh = children[0] as THREE.Mesh;
+        if (fillMesh.material) {
+          (fillMesh.material as THREE.MeshBasicMaterial).color.set(fillColor);
+          (fillMesh.material as THREE.MeshBasicMaterial).opacity = fillOpacity;
+          (fillMesh.material as THREE.MeshBasicMaterial).transparent = fillOpacity < 1.0;
+        }
+
+        // stroke mesh (두 번째 자식)
+        const strokeMesh = children[1] as THREE.Mesh;
+        if (strokeMesh.material) {
+          (strokeMesh.material as THREE.MeshBasicMaterial).color.set(strokeColor);
+          (strokeMesh.material as THREE.MeshBasicMaterial).opacity = strokeOpacity;
+          (strokeMesh.material as THREE.MeshBasicMaterial).transparent = strokeOpacity < 1.0;
+        }
+      }
+    });
+  }, [settings, rgbToCss]);
+
   const updateTransforms = useCallback(() => {
     // 먼저 모든 원을 원본 위치로 리셋
     circlesRef.current.forEach(circle => {
@@ -1073,7 +1135,7 @@ const ThreeScene: React.FC = () => {
     }
   };
 
-  // Effects for auto-update when controls change
+  // Effects for auto-update when controls change (색상 제외)
   useEffect(() => {
     if (sceneRef.current) {
       createCircles();
@@ -1082,7 +1144,19 @@ const ThreeScene: React.FC = () => {
     settings.rows, settings.cols, settings.rowSpacing, settings.colSpacing,
     settings.shapeType, settings.circleRadius, settings.rectangleWidth, settings.rectangleHeight,
     settings.enableWidthScaling, settings.widthScaleFactor, settings.borderThickness,
-    settings.frequency1, settings.frequency2, settings.frequency3,
+    settings.frequency1, settings.frequency2, settings.frequency3
+  ]);
+
+  // 색상 변경 시 재질만 업데이트 (디바운싱 적용)
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (sceneRef.current && circlesRef.current.length > 0) {
+        updateColors();
+      }
+    }, 16); // 약 60fps에 해당하는 지연
+
+    return () => clearTimeout(timeoutId);
+  }, [
     settings.fill1, settings.stroke1, settings.syncColors1,
     settings.fill2, settings.stroke2, settings.syncColors2,
     settings.fill3, settings.stroke3, settings.syncColors3
@@ -1098,10 +1172,15 @@ const ThreeScene: React.FC = () => {
     settings.rotationX, settings.rotationY, settings.rotationZ
   ]);
 
+  // 배경색 변경 디바운싱
   useEffect(() => {
-    if (rendererRef.current) {
-      rendererRef.current.setClearColor(settings.backgroundColor);
-    }
+    const timeoutId = setTimeout(() => {
+      if (rendererRef.current) {
+        rendererRef.current.setClearColor(settings.backgroundColor);
+      }
+    }, 16); // 약 60fps에 해당하는 지연
+
+    return () => clearTimeout(timeoutId);
   }, [settings.backgroundColor]);
 
   // 카메라 컨트롤 타입이 변경될 때 씬 재초기화
@@ -1198,8 +1277,13 @@ const ThreeScene: React.FC = () => {
         controlsRef.current.dispose();
         controlsRef.current = null;
       }
-      if (mountRef.current && rendererRef.current && mountRef.current.contains(rendererRef.current.domElement)) {
-        mountRef.current.removeChild(rendererRef.current.domElement);
+      if (rendererRef.current) {
+        // 렌더러의 dispose 호출
+        rendererRef.current.dispose();
+        if (mountRef.current && mountRef.current.contains(rendererRef.current.domElement)) {
+          mountRef.current.removeChild(rendererRef.current.domElement);
+        }
+        rendererRef.current = undefined;
       }
       window.removeEventListener('resize', handleResize);
     };
