@@ -13,6 +13,7 @@ import ProjectManager from './ProjectManager';
 import SaveProjectModal from './SaveProjectModal';
 import { ControlPanel } from './ui/ControlPanel';
 import { Modal } from './ui/Modal';
+import { ToastContainer, useToast } from './ui/Toast';
 // leva 관련 import 및 코드 제거 완료
 
 interface Project {
@@ -29,13 +30,16 @@ const ThreeScene: React.FC = () => {
   const controlsRef = useRef<TrackballControls | null>(null);
   const circlesRef = useRef<CircleData[]>([]);
   const animationIdRef = useRef<number>();
-  const [showProjectManager, setShowProjectManager] = useState(false);
+  const [showProjectManager, setShowProjectManager] = useState(true);
   const [isLoadingProject, setIsLoadingProject] = useState(false);
   const [forceUpdate, setForceUpdate] = useState(0);
   const [activeProject, setActiveProject] = useState<string | null>(null);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [showProjectDetails, setShowProjectDetails] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+
+  // Toast 시스템
+  const toast = useToast();
 
   // localStorage 키
   const STORAGE_KEY = 'circle-matrix-settings';
@@ -181,21 +185,18 @@ const ThreeScene: React.FC = () => {
 
         // 클립보드에 복사
         await navigator.clipboard.writeText(tinyURL);
-        setMessage('TinyURL copied to clipboard!');
-        setTimeout(() => setMessage(''), 3000);
+        toast.success(`TinyURL copied to clipboard!\n${tinyURL}`);
       } else {
         // TinyURL 생성 실패 시 원본 URL 사용
         await navigator.clipboard.writeText(shareURL);
-        setMessage('Share URL copied to clipboard!');
-        setTimeout(() => setMessage(''), 3000);
+        toast.success(`Share URL copied to clipboard!\n${shareURL}`);
       }
     } catch (error) {
       console.warn('Failed to create TinyURL:', error);
       // 에러 발생 시 원본 URL 사용
       try {
         await navigator.clipboard.writeText(shareURL);
-        setMessage('Share URL copied to clipboard!');
-        setTimeout(() => setMessage(''), 3000);
+        toast.success(`Share URL copied to clipboard!\n${shareURL}`);
       } catch (clipboardError) {
         // 클립보드 복사 실패 시 URL을 alert로 표시
         alert(`Share URL:\n${shareURL}`);
@@ -290,14 +291,12 @@ const ThreeScene: React.FC = () => {
   // 활성 프로젝트에 저장하는 함수
   const saveToActiveProject = useCallback(() => {
     if (!activeProject) {
-      setMessage('No active project to save to.');
-      setTimeout(() => setMessage(''), 3000);
+      toast.warning('No active project to save to.');
       return;
     }
 
     const updatedProjects = saveProject(activeProject);
-    setMessage(`Saved to active project: "${activeProject}"`);
-    setTimeout(() => setMessage(''), 3000);
+    toast.success(`Saved to active project: "${activeProject}"`);
     return updatedProjects;
   }, [activeProject, saveProject]);
 
@@ -306,13 +305,11 @@ const ThreeScene: React.FC = () => {
     try {
       const updatedProjects = saveProject(name);
       setActiveProject(name);
-      setMessage(`Project "${name}" saved successfully.`);
-      setTimeout(() => setMessage(''), 3000);
+      toast.success(`Project "${name}" saved successfully.`);
       return updatedProjects;
     } catch (error) {
       console.error('Error saving project:', error);
-      setMessage('Error saving project.');
-      setTimeout(() => setMessage(''), 3000);
+      toast.error('Error saving project.');
     }
   }, [saveProject]);
 
@@ -397,8 +394,7 @@ const ThreeScene: React.FC = () => {
         const newURL = window.location.pathname;
         window.history.replaceState({}, '', newURL);
 
-        setMessage('Project loaded from URL successfully.');
-        setTimeout(() => setMessage(''), 3000);
+        toast.success('Project loaded from URL successfully.');
         return true;
       } catch (error) {
         return false;
@@ -428,21 +424,18 @@ const ThreeScene: React.FC = () => {
 
         // 클립보드에 복사
         await navigator.clipboard.writeText(tinyURL);
-        setMessage('TinyURL copied to clipboard!');
-        setTimeout(() => setMessage(''), 3000);
+        toast.success(`TinyURL copied to clipboard!\n${tinyURL}`);
       } else {
         // TinyURL 생성 실패 시 원본 URL 사용
         await navigator.clipboard.writeText(shareURL);
-        setMessage('Share URL copied to clipboard!');
-        setTimeout(() => setMessage(''), 3000);
+        toast.success(`Share URL copied to clipboard!\n${shareURL}`);
       }
     } catch (error) {
       console.warn('Failed to create TinyURL:', error);
       // 에러 발생 시 원본 URL 사용
       try {
         await navigator.clipboard.writeText(shareURL);
-        setMessage('Share URL copied to clipboard!');
-        setTimeout(() => setMessage(''), 3000);
+        toast.success(`Share URL copied to clipboard!\n${shareURL}`);
       } catch (clipboardError) {
         // 클립보드 복사 실패 시 URL을 alert로 표시
         alert(`Share URL:\n${shareURL}`);
@@ -451,7 +444,7 @@ const ThreeScene: React.FC = () => {
   }, [getCurrentSettings]);
 
   // 메시지 상태 추가
-  const [message, setMessage] = useState('');
+
 
   // 프로젝트 상세 모달 핸들러
   const handleShowProjectDetails = useCallback((project: Project) => {
@@ -775,7 +768,7 @@ const ThreeScene: React.FC = () => {
         controls.removeEventListener('update', handleChange);
       };
     }
-  }, [setMessage]);
+  }, []);
 
   useEffect(() => {
     // URL에서 프로젝트 로드 시도
@@ -837,39 +830,33 @@ const ThreeScene: React.FC = () => {
       switch (event.code) {
         case 'KeyW':
           camera.position.z -= moveSpeed;
-          // Leva 컨트롤 업데이트
-          setMessage('Camera position updated.');
-          setTimeout(() => setMessage(''), 3000);
+          // 카메라 위치 업데이트
+          toast.info('Camera position updated.');
           break;
         case 'KeyS':
           camera.position.z += moveSpeed;
-          // Leva 컨트롤 업데이트
-          setMessage('Camera position updated.');
-          setTimeout(() => setMessage(''), 3000);
+          // 카메라 위치 업데이트
+          toast.info('Camera position updated.');
           break;
         case 'KeyA':
           camera.position.x -= moveSpeed;
-          // Leva 컨트롤 업데이트
-          setMessage('Camera position updated.');
-          setTimeout(() => setMessage(''), 3000);
+          // 카메라 위치 업데이트
+          toast.info('Camera position updated.');
           break;
         case 'KeyD':
           camera.position.x += moveSpeed;
-          // Leva 컨트롤 업데이트
-          setMessage('Camera position updated.');
-          setTimeout(() => setMessage(''), 3000);
+          // 카메라 위치 업데이트
+          toast.info('Camera position updated.');
           break;
         case 'KeyQ':
           camera.position.y += moveSpeed;
-          // Leva 컨트롤 업데이트
-          setMessage('Camera position updated.');
-          setTimeout(() => setMessage(''), 3000);
+          // 카메라 위치 업데이트
+          toast.info('Camera position updated.');
           break;
         case 'KeyE':
           camera.position.y -= moveSpeed;
-          // Leva 컨트롤 업데이트
-          setMessage('Camera position updated.');
-          setTimeout(() => setMessage(''), 3000);
+          // 카메라 위치 업데이트
+          toast.info('Camera position updated.');
           break;
       }
 
@@ -882,7 +869,7 @@ const ThreeScene: React.FC = () => {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [setMessage, activeProject, saveToActiveProject, showSaveModal, showProjectManager, showProjectDetails]);
+  }, [activeProject, saveToActiveProject, showSaveModal, showProjectManager, showProjectDetails]);
 
   // Auto-save when controls change
   useEffect(() => {
@@ -916,15 +903,8 @@ const ThreeScene: React.FC = () => {
         onToggleVisibility={() => setShowControlPanel(v => !v)}
       />
 
-      {/* Message Display */}
-      {message && (
-        <div className="absolute top-4 right-4 z-20 glass-strong text-[#34C759] px-4 py-3 rounded-2xl shadow-lg font-medium text-sm animate-fade-in">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-[#34C759] rounded-full animate-pulse"></div>
-            {message}
-          </div>
-        </div>
-      )}
+      {/* Toast Container */}
+      <ToastContainer toasts={toast.toasts} onClose={toast.removeToast} />
 
       {/* Loading Indicator */}
       {isLoadingProject && (
@@ -948,6 +928,7 @@ const ThreeScene: React.FC = () => {
           onOpenSaveModal={() => setShowSaveModal(true)}
           onClose={() => setShowProjectManager(false)}
           onShowProjectDetails={handleShowProjectDetails}
+          toast={toast}
           onShareProject={async (settings) => {
             const projectData = encodeURIComponent(JSON.stringify(settings));
             const shareURL = `${window.location.origin}${window.location.pathname}?project=${projectData}`;
@@ -967,21 +948,18 @@ const ThreeScene: React.FC = () => {
 
                 // 클립보드에 복사
                 await navigator.clipboard.writeText(tinyURL);
-                setMessage('TinyURL copied to clipboard!');
-                setTimeout(() => setMessage(''), 3000);
+                toast.success(`TinyURL copied to clipboard!\n${tinyURL}`);
               } else {
                 // TinyURL 생성 실패 시 원본 URL 사용
                 await navigator.clipboard.writeText(shareURL);
-                setMessage('Project URL copied to clipboard!');
-                setTimeout(() => setMessage(''), 3000);
+                toast.success(`Share URL copied to clipboard!\n${shareURL}`);
               }
             } catch (error) {
               console.warn('Failed to create TinyURL:', error);
               // 에러 발생 시 원본 URL 사용
               try {
                 await navigator.clipboard.writeText(shareURL);
-                setMessage('Project URL copied to clipboard!');
-                setTimeout(() => setMessage(''), 3000);
+                toast.success(`Share URL copied to clipboard!\n${shareURL}`);
               } catch (clipboardError) {
                 // 클립보드 복사 실패 시 URL을 alert로 표시
                 alert(`Share URL:\n${shareURL}`);

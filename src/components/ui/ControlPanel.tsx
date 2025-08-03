@@ -463,21 +463,19 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
     isVisible,
     onToggleVisibility
 }) => {
-    if (!isVisible) {
-        return (
+    return (
+        <>
+            {/* Toggle Button - 항상 표시 */}
             <button
                 onClick={onToggleVisibility}
-                className="fixed top-4 right-4 z-30 p-3 rounded-2xl glass-strong text-[#007AFF] hover:text-[#0056CC] hover:scale-105 smooth-transition"
-                title="Show Control Panel"
+                className={`fixed top-4 right-4 z-30 p-3 rounded-2xl glass-strong text-[#007AFF] hover:text-[#0056CC] hover:scale-105 control-panel-toggle ${isVisible ? 'opacity-0 pointer-events-none scale-95' : 'opacity-100 scale-100'}`}
+                title={isVisible ? "Hide Control Panel" : "Show Control Panel"}
             >
                 <Palette className="w-6 h-6" />
             </button>
-        );
-    }
 
-    return (
-        <>
-            <div className="fixed top-4 right-4 w-80 max-h-[calc(100vh-2rem)] overflow-y-auto glass-strong rounded-2xl shadow-2xl border border-white/20 z-30">
+            {/* Control Panel - 슬라이드 애니메이션 */}
+            <div className={`fixed top-4 right-4 w-80 max-h-[calc(100vh-2rem)] overflow-y-auto glass-strong rounded-2xl shadow-2xl border border-white/20 z-30 control-panel-slide ${isVisible ? 'translate-x-0' : 'translate-x-full'}`}>
                 <div className="p-4 space-y-4">
                     {/* 헤더 */}
                     <div className="flex items-center justify-between pb-3 border-b border-white/20">
@@ -500,7 +498,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                     <div className="space-y-2">
                         <h3 className="text-sm font-medium text-[#007AFF]">Quick Actions</h3>
                         <div className="grid grid-cols-2 gap-2">
-                            <div className="glass-weak rounded-xl p-1 flex items-center justify-center">
+                            <div className="glass-weak rounded-xl p-1 flex items-center justify-center border border-white/20">
                                 <Button
                                     label="Reset All"
                                     onClick={onResetAll}
@@ -509,7 +507,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                                     icon={<RotateCcw className="w-3 h-3" />}
                                 />
                             </div>
-                            <div className="glass-weak rounded-xl p-1 flex items-center justify-center">
+                            <div className="glass-weak rounded-xl p-1 flex items-center justify-center border border-white/20">
                                 <Button
                                     label="Reset Camera"
                                     onClick={onResetCamera}
@@ -518,7 +516,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                                     icon={<Camera className="w-3 h-3" />}
                                 />
                             </div>
-                            <div className="glass-weak rounded-xl p-1 flex items-center justify-center">
+                            <div className="glass-weak rounded-xl p-1 flex items-center justify-center border border-white/20">
                                 <Button
                                     label="Regenerate"
                                     onClick={onRegenerateColors}
@@ -527,7 +525,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                                     icon={<Palette className="w-3 h-3" />}
                                 />
                             </div>
-                            <div className="glass-weak rounded-xl p-1 flex items-center justify-center">
+                            <div className="glass-weak rounded-xl p-1 flex items-center justify-center border border-white/20">
                                 <Button
                                     label="Share"
                                     onClick={onShareURL}

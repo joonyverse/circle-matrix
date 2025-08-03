@@ -84,6 +84,34 @@ body {
     transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* Control Panel Slide Animation */
+.control-panel-slide {
+    transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    will-change: transform;
+}
+
+.control-panel-slide-enter {
+    transform: translateX(100%);
+}
+
+.control-panel-slide-enter-active {
+    transform: translateX(0);
+}
+
+.control-panel-slide-exit {
+    transform: translateX(0);
+}
+
+.control-panel-slide-exit-active {
+    transform: translateX(100%);
+}
+
+/* Toggle Button Animation */
+.control-panel-toggle {
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    will-change: opacity, transform;
+}
+
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
     width: 6px;
