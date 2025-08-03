@@ -32,12 +32,21 @@ export interface GuiControls {
   rotationX: number;
   rotationY: number;
   rotationZ: number;
-  cameraControlType: 'orbit' | 'trackball';
-  cameraAutoRotate: boolean;
-  cameraAutoRotateSpeed: number;
   cameraMinDistance: number;
   cameraMaxDistance: number;
   cameraEnablePan: boolean;
+  cameraPositionX: number;
+  cameraPositionY: number;
+  cameraPositionZ: number;
+  cameraRotationX: number;
+  cameraRotationY: number;
+  cameraRotationZ: number;
+  objectPositionX: number;
+  objectPositionY: number;
+  objectPositionZ: number;
+  objectRotationX: number;
+  objectRotationY: number;
+  objectRotationZ: number;
   colorGroup1: {
     fill: string;
     stroke: string;
@@ -66,6 +75,7 @@ export interface GuiControls {
     syncColors: boolean;
   };
   regenerateColors: () => void;
+  resetCamera: () => void;
 }
 
 export interface CircleGridConfig {
