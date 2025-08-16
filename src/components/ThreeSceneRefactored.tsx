@@ -4,7 +4,8 @@ import {
   useSettings, 
   useProjectManager, 
   useAnimations, 
-  useCapture 
+  useCapture,
+  useSmoothCameraControls
 } from '../hooks';
 import { ControlPanel } from './controls';
 import { ProjectManager } from './project';
@@ -139,6 +140,15 @@ const ThreeSceneRefactored: React.FC = () => {
     sceneRef,
     cameraRef,
     settings,
+  });
+
+  // 부드러운 카메라 컨트롤 훅
+  const {
+    stopMovement,
+    isMoving,
+  } = useSmoothCameraControls({
+    controlsRef,
+    isEnabled: !isZenMode, // Zen 모드에서는 비활성화
   });
 
   // 카메라 컨트롤 타입 변경
@@ -283,7 +293,7 @@ const ThreeSceneRefactored: React.FC = () => {
     settings.rows, settings.cols, settings.rowSpacing, settings.colSpacing,
     settings.shapeType, settings.circleRadius, settings.rectangleWidth, settings.rectangleHeight,
     settings.enableWidthScaling, settings.widthScaleFactor, settings.borderThickness,
-    settings.frequency1, settings.frequency2, settings.frequency3,
+    settings.frequency1, settings.frequency2, settings.frequency3, settings.frequency4,
     createCircles
   ]);
 
@@ -300,6 +310,7 @@ const ThreeSceneRefactored: React.FC = () => {
     settings.fill1, settings.stroke1, settings.syncColors1,
     settings.fill2, settings.stroke2, settings.syncColors2,
     settings.fill3, settings.stroke3, settings.syncColors3,
+    settings.fill4, settings.stroke4, settings.syncColors4,
     updateColors, sceneRef, circlesRef
   ]);
 
@@ -321,7 +332,7 @@ const ThreeSceneRefactored: React.FC = () => {
     }
   }, [cameraControlType, initSceneWithControlType, sceneRef]);
 
-  // 키보드 컨트롤
+  // 키보드 컨트롤 (비카메라 단축키만)
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       const activeElement = document.activeElement;
@@ -349,6 +360,8 @@ const ThreeSceneRefactored: React.FC = () => {
       if (event.key === KEYBOARD_SHORTCUTS.ZEN_MODE || event.key === KEYBOARD_SHORTCUTS.ZEN_MODE_UPPER) {
         event.preventDefault();
         toggleZenMode();
+        // Zen 모드 변경 시 카메라 이동 중지
+        stopMovement();
         return;
       }
 
@@ -359,39 +372,12 @@ const ThreeSceneRefactored: React.FC = () => {
         return;
       }
 
-      // WASD 카메라 컨트롤
-      if (!controlsRef.current) return;
-
-      const moveSpeed = CAMERA_DEFAULTS.KEYBOARD_MOVE_SPEED;
-      const camera = controlsRef.current.object;
-
-      switch (event.code) {
-        case KEYBOARD_SHORTCUTS.CAMERA_FORWARD:
-          camera.position.z -= moveSpeed;
-          break;
-        case KEYBOARD_SHORTCUTS.CAMERA_BACKWARD:
-          camera.position.z += moveSpeed;
-          break;
-        case KEYBOARD_SHORTCUTS.CAMERA_LEFT:
-          camera.position.x -= moveSpeed;
-          break;
-        case KEYBOARD_SHORTCUTS.CAMERA_RIGHT:
-          camera.position.x += moveSpeed;
-          break;
-        case KEYBOARD_SHORTCUTS.CAMERA_UP:
-          camera.position.y += moveSpeed;
-          break;
-        case KEYBOARD_SHORTCUTS.CAMERA_DOWN:
-          camera.position.y -= moveSpeed;
-          break;
-      }
-
-      controlsRef.current.update();
+      // WASD 카메라 컨트롤은 useSmoothCameraControls 훅에서 처리됨
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeProject, handleSaveToActiveProject, toggleZenMode, controlsRef]);
+  }, [activeProject, handleSaveToActiveProject, toggleZenMode, stopMovement]);
 
   // Auto-save when controls change
   useEffect(() => {
@@ -481,6 +467,14 @@ const ThreeSceneRefactored: React.FC = () => {
         <div className="absolute top-4 right-4 z-20 glass-strong text-[#007AFF] px-4 py-3 rounded-2xl shadow-lg font-medium text-sm flex items-center gap-3 animate-fade-in">
           <div className="animate-spin rounded-full h-4 w-4 border-2 border-[#007AFF] border-t-transparent"></div>
           Loading project settings...
+        </div>
+      )}
+
+      {/* Camera Movement Indicator */}
+      {isMoving && (
+        <div className="absolute top-4 right-4 z-15 glass-strong text-[#34C759] px-3 py-2 rounded-xl shadow-lg font-medium text-xs flex items-center gap-2 animate-fade-in">
+          <div className="w-2 h-2 bg-[#34C759] rounded-full animate-pulse"></div>
+          Camera Moving
         </div>
       )}
 

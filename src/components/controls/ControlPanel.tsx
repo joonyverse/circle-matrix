@@ -870,7 +870,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                             <Slider
                                 label="Rectangle Width"
                                 value={settings.rectangleWidth}
-                                min={0.2}
+                                min={0.05}
                                 max={12}
                                 step={0.1}
                                 onChange={(value) => onSettingChange('rectangleWidth', value)}
@@ -898,7 +898,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                                 label="Width Scale Factor"
                                 value={settings.widthScaleFactor}
                                 min={1.0}
-                                max={10.0}
+                                max={100.0}
                                 step={0.1}
                                 onChange={(value) => onSettingChange('widthScaleFactor', value)}
                                 resetValue={2.0}
@@ -1159,6 +1159,40 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                                 onChange={(value) => onSettingChange('stroke3', value)}
                                 resetValue={{ r: 0, g: 0, b: 0, a: 1.0 }}
                                 onReset={() => onSettingChange('stroke3', { r: 0, g: 0, b: 0, a: 1.0 })}
+                            />
+                        </Folder>
+
+                        <Folder title="Color Group 4" defaultCollapsed={false}>
+                            <Slider
+                                label="Frequency"
+                                value={settings.frequency4}
+                                min={0}
+                                max={5}
+                                step={0.1}
+                                onChange={(value) => onSettingChange('frequency4', value)}
+                                resetValue={1}
+                                onReset={() => onSettingChange('frequency4', 1)}
+                            />
+                            <Toggle
+                                label="Sync Colors"
+                                value={settings.syncColors4}
+                                onChange={(value) => onSettingChange('syncColors4', value)}
+                                resetValue={false}
+                                onReset={() => onSettingChange('syncColors4', false)}
+                            />
+                            <ColorPicker
+                                label="Fill Color"
+                                value={settings.fill4}
+                                onChange={(value) => onSettingChange('fill4', value)}
+                                resetValue={{ r: 255, g: 159, b: 10, a: 0.8 }}
+                                onReset={() => onSettingChange('fill4', { r: 255, g: 159, b: 10, a: 0.8 })}
+                            />
+                            <ColorPicker
+                                label="Stroke Color"
+                                value={settings.syncColors4 ? settings.fill4 : settings.stroke4}
+                                onChange={(value) => onSettingChange('stroke4', value)}
+                                resetValue={{ r: 0, g: 0, b: 0, a: 1.0 }}
+                                onReset={() => onSettingChange('stroke4', { r: 0, g: 0, b: 0, a: 1.0 })}
                             />
                         </Folder>
                     </Folder>

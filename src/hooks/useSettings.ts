@@ -42,6 +42,10 @@ const defaultSettings = {
   syncColors3: false,
   fill3: { r: 175, g: 82, b: 222, a: 0.8 },
   stroke3: { r: 0, g: 0, b: 0, a: 1.0 },
+  frequency4: 1,
+  syncColors4: false,
+  fill4: { r: 255, g: 159, b: 10, a: 0.8 },
+  stroke4: { r: 0, g: 0, b: 0, a: 1.0 },
 
   // 애니메이션 설정
   animationSpeed: 1.0,

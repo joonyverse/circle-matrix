@@ -38,7 +38,7 @@ export const CAMERA_DEFAULTS = {
   ZOOM_SPEED: 1.5,
   PAN_SPEED: 1.5,
   DYNAMIC_DAMPING_FACTOR: 0.1,
-  KEYBOARD_MOVE_SPEED: 0.5,
+  KEYBOARD_MOVE_SPEED: 0.2, // 부드러운 이돔을 위해 기본 속도 조정
 } as const;
 
 // localStorage 키

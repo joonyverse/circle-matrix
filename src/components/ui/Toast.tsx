@@ -13,21 +13,46 @@ interface ToastProps {
 
 const Toast: React.FC<ToastProps> = ({ id, type, message, duration = 3000, onClose }) => {
     const [isExiting, setIsExiting] = useState(false);
+    const timerRef = React.useRef<NodeJS.Timeout | null>(null);
+    const exitTimerRef = React.useRef<NodeJS.Timeout | null>(null);
 
+    // 토스트가 마운트되면 개별 타이머 시작
     useEffect(() => {
-        const timer = setTimeout(() => {
+        // 각 토스트마다 독립적인 타이머 생성
+        timerRef.current = setTimeout(() => {
             setIsExiting(true);
-            setTimeout(() => {
+            // 애니메이션 완료 후 제거
+            exitTimerRef.current = setTimeout(() => {
                 onClose(id);
-            }, 300); // 애니메이션 완료 후 제거
+            }, 300);
         }, duration);
 
-        return () => clearTimeout(timer);
-    }, [id, duration, onClose]);
+        // 컴포넌트가 언마운트되거나 의존성이 변경될 때 타이머 정리
+        return () => {
+            if (timerRef.current) {
+                clearTimeout(timerRef.current);
+                timerRef.current = null;
+            }
+            if (exitTimerRef.current) {
+                clearTimeout(exitTimerRef.current);
+                exitTimerRef.current = null;
+            }
+        };
+    }, []); // 빈 의존성 배열로 마운트 시에만 실행
 
     const handleClose = () => {
+        // 수동 닫기 시 기존 타이머 정리
+        if (timerRef.current) {
+            clearTimeout(timerRef.current);
+            timerRef.current = null;
+        }
+        if (exitTimerRef.current) {
+            clearTimeout(exitTimerRef.current);
+            exitTimerRef.current = null;
+        }
+        
         setIsExiting(true);
-        setTimeout(() => {
+        exitTimerRef.current = setTimeout(() => {
             onClose(id);
         }, 300); // 애니메이션 완료 후 제거
     };
@@ -114,19 +139,49 @@ export const useToast = () => {
         duration?: number;
     }>>([]);
 
-    const addToast = (type: ToastType, message: string, duration?: number) => {
-        const id = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-        setToasts(prev => [...prev, { id, type, message, duration }]);
-    };
+    // 토스트 추가 시 유니크 ID 생성
+    const addToast = React.useCallback((type: ToastType, message: string, duration?: number) => {
+        const id = `toast-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        const newToast = { id, type, message, duration };
+        
+        setToasts(prev => {
+            // 동일한 메시지의 토스트가 이미 있는지 확인 (중복 방지)
+            const isDuplicate = prev.some(toast => 
+                toast.message === message && toast.type === type
+            );
+            
+            if (isDuplicate) {
+                return prev; // 중복된 메시지는 추가하지 않음
+            }
+            
+            // 최대 5개의 토스트만 유지 (메모리 누수 방지)
+            const newToasts = [...prev, newToast];
+            if (newToasts.length > 5) {
+                return newToasts.slice(-5); // 가장 오래된 토스트 제거
+            }
+            
+            return newToasts;
+        });
+    }, []);
 
-    const removeToast = (id: string) => {
+    // 토스트 제거
+    const removeToast = React.useCallback((id: string) => {
         setToasts(prev => prev.filter(toast => toast.id !== id));
-    };
+    }, []);
 
-    const success = (message: string, duration?: number) => addToast('success', message, duration);
-    const error = (message: string, duration?: number) => addToast('error', message, duration);
-    const warning = (message: string, duration?: number) => addToast('warning', message, duration);
-    const info = (message: string, duration?: number) => addToast('info', message, duration);
+    // 모든 토스트 제거
+    const clearAllToasts = React.useCallback(() => {
+        setToasts([]);
+    }, []);
+
+    const success = React.useCallback((message: string, duration?: number) => 
+        addToast('success', message, duration), [addToast]);
+    const error = React.useCallback((message: string, duration?: number) => 
+        addToast('error', message, duration), [addToast]);
+    const warning = React.useCallback((message: string, duration?: number) => 
+        addToast('warning', message, duration), [addToast]);
+    const info = React.useCallback((message: string, duration?: number) => 
+        addToast('info', message, duration), [addToast]);
 
     return {
         toasts,
@@ -134,6 +189,7 @@ export const useToast = () => {
         error,
         warning,
         info,
-        removeToast
+        removeToast,
+        clearAllToasts
     };
 }; 

@@ -156,7 +156,8 @@ export const useThreeRenderer = ({
     assignColorGroups(circles, [
       settings.frequency1,
       settings.frequency2,
-      settings.frequency3
+      settings.frequency3,
+      settings.frequency4
     ], colorSeedRef.current);
 
     circles.forEach(circle => {
@@ -198,6 +199,12 @@ export const useThreeRenderer = ({
           strokeColor = settings.syncColors3 ? rgbToCss(settings.fill3) : rgbToCss(settings.stroke3);
           fillOpacity = settings.fill3.a;
           strokeOpacity = settings.syncColors3 ? settings.fill3.a : settings.stroke3.a;
+          break;
+        case 3:
+          fillColor = rgbToCss(settings.fill4);
+          strokeColor = settings.syncColors4 ? rgbToCss(settings.fill4) : rgbToCss(settings.stroke4);
+          fillOpacity = settings.fill4.a;
+          strokeOpacity = settings.syncColors4 ? settings.fill4.a : settings.stroke4.a;
           break;
         default:
           fillColor = rgbToCss(settings.fill1);
@@ -296,6 +303,12 @@ export const useThreeRenderer = ({
           strokeColor = settings.syncColors3 ? rgbToCss(settings.fill3) : rgbToCss(settings.stroke3);
           fillOpacity = settings.fill3.a;
           strokeOpacity = settings.syncColors3 ? settings.fill3.a : settings.stroke3.a;
+          break;
+        case 3:
+          fillColor = rgbToCss(settings.fill4);
+          strokeColor = settings.syncColors4 ? rgbToCss(settings.fill4) : rgbToCss(settings.stroke4);
+          fillOpacity = settings.fill4.a;
+          strokeOpacity = settings.syncColors4 ? settings.fill4.a : settings.stroke4.a;
           break;
         default:
           fillColor = rgbToCss(settings.fill1);
