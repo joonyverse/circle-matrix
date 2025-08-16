@@ -148,10 +148,11 @@ class SeededRandom {
 
 export const assignColorGroups = (
   circles: CircleData[],
-  frequencies: [number, number, number],
+  frequencies: [number, number, number, number], // 4개 그룹 지원
   seed?: number
 ): void => {
-  const totalFreq = frequencies[0] + frequencies[1] + frequencies[2];
+  // 4개 그룹 총 빈도 계산
+  const totalFreq = frequencies[0] + frequencies[1] + frequencies[2] + frequencies[3];
   const normalizedFreq = frequencies.map(f => f / totalFreq);
 
   // Use seeded random if seed is provided, otherwise use Math.random
@@ -163,8 +164,10 @@ export const assignColorGroups = (
       circle.colorGroup = 0;
     } else if (rand < normalizedFreq[0] + normalizedFreq[1]) {
       circle.colorGroup = 1;
-    } else {
+    } else if (rand < normalizedFreq[0] + normalizedFreq[1] + normalizedFreq[2]) {
       circle.colorGroup = 2;
+    } else {
+      circle.colorGroup = 3; // 4번째 그룹 추가
     }
   });
 };
