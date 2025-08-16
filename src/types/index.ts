@@ -10,7 +10,10 @@ export interface CircleData {
   colorGroup: number;
   columnIndex: number;
   rowIndex: number;
-  mesh?: THREE.Mesh;
+  mesh?: THREE.Group; // Changed from THREE.Mesh to THREE.Group to support morphing
+  // New properties for shape morphing
+  currentShapeType?: ShapeType;
+  lastRotationCheck?: number; // Track last rotation for shape changing
 }
 
 export interface GuiControls {

@@ -225,3 +225,76 @@ export const applyAxisRotations = (
     circle.mesh.rotation.z = rotationZ;
   });
 };
+
+// 도형 변경 지원 함수
+export const updateShapeGeometry = (
+  circle: CircleData,
+  config: CircleGridConfig,
+  newShapeType: ShapeType,
+  borderThickness: number,
+  enableWidthScaling?: boolean,
+  widthScaleFactor?: number
+): void => {
+  if (!circle.mesh) return;
+
+  // 새로운 설정으로 지오메트리 생성
+  const newConfig = { ...config, shapeType: newShapeType };
+  
+  const fillGeometry = createShapeGeometry(
+    newConfig,
+    circle.columnIndex,
+    enableWidthScaling,
+    widthScaleFactor
+  );
+  
+  const strokeGeometry = createShapeStrokeGeometry(
+    newConfig,
+    borderThickness,
+    circle.columnIndex,
+    enableWidthScaling,
+    widthScaleFactor
+  );
+
+  // 기존 메시 업데이트
+  const children = circle.mesh.children;
+  if (children.length >= 2) {
+    // Fill mesh 업데이트
+    const fillMesh = children[0] as THREE.Mesh;
+    if (fillMesh.geometry) {
+      fillMesh.geometry.dispose();
+      fillMesh.geometry = fillGeometry;
+    }
+
+    // Stroke mesh 업데이트
+    const strokeMesh = children[1] as THREE.Mesh;
+    if (strokeMesh.geometry) {
+      strokeMesh.geometry.dispose();
+      strokeMesh.geometry = strokeGeometry;
+    }
+  }
+
+  // 현재 도형 타입 업데이트
+  circle.currentShapeType = newShapeType;
+};
+
+// 모든 도형의 지오메트리를 업데이트
+export const updateAllShapesGeometry = (
+  circles: CircleData[],
+  config: CircleGridConfig,
+  borderThickness: number,
+  enableWidthScaling?: boolean,
+  widthScaleFactor?: number
+): void => {
+  circles.forEach(circle => {
+    if (circle.currentShapeType && circle.currentShapeType !== config.shapeType) {
+      updateShapeGeometry(
+        circle,
+        config,
+        config.shapeType,
+        borderThickness,
+        enableWidthScaling,
+        widthScaleFactor
+      );
+    }
+  });
+};

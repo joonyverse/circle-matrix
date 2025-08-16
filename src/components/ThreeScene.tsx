@@ -7,7 +7,8 @@ import {
   createShapeStrokeGeometry,
   generateCirclePositions,
   assignColorGroups,
-  applyCylindricalTransform
+  applyCylindricalTransform,
+  updateShapeGeometry
 } from '../utils/circleGeometry';
 import { isDarkBackground } from '../utils/colorUtils';
 import ProjectManager from './ProjectManager';
@@ -59,6 +60,11 @@ const ThreeScene: React.FC = () => {
   const [showCaptureList, setShowCaptureList] = useState(false);
   const [showShortcutsGuide, setShowShortcutsGuide] = useState(true);
   const [cameraControlType, setCameraControlType] = useState<'trackball' | 'orbit'>('orbit');
+  
+  // 애니메이션 상태 추가
+  const [isRotationAnimating, setIsRotationAnimating] = useState(false);
+  const rotationAnimationRef = useRef<number>();
+  const lastShapeChangeAngleRef = useRef<number>(0);
 
   // Toast 시스템
   const toast = useToast();
@@ -110,6 +116,9 @@ const ThreeScene: React.FC = () => {
     syncColors3: false,
     fill3: { r: 175, g: 82, b: 222, a: 0.8 },
     stroke3: { r: 0, g: 0, b: 0, a: 1.0 }, // 검은색 테두리
+
+    // Animation settings
+    animationSpeed: 1.0, // 1.0 = normal speed, 2.0 = 2x faster, 0.5 = 2x slower
 
     // Camera (only position, settings use default values)
     cameraPositionX: 0,
@@ -752,19 +761,101 @@ const ThreeScene: React.FC = () => {
     return `rgb(${rgba.r}, ${rgba.g}, ${rgba.b})`;
   }, []);
 
-  // 모든 설정 저장 (카메라 위치 제외, 카메라 컨트롤 타입 포함)
-  const saveSettings = useCallback(() => {
-    const { cameraPositionX, cameraPositionY, cameraPositionZ, ...settingsWithoutCamera } = settings;
-    const settingsToSave = {
-      ...settingsWithoutCamera,
-      colorSeed: colorSeedRef.current,
-      cameraControlType: cameraControlType
+  // 도형 변경 감지 함수
+  const checkAndChangeShape = useCallback((rotationY: number) => {
+    const normalizedAngle = ((rotationY % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+    const threshold = 0.1; // 각도 임계값 (약 5.7도)
+    
+    // 90도 (π/2) 또는 270도 (3π/2) 근처에서 도형 변경
+    const isNear90 = Math.abs(normalizedAngle - Math.PI/2) < threshold;
+    const isNear270 = Math.abs(normalizedAngle - 3*Math.PI/2) < threshold;
+    
+    if ((isNear90 || isNear270) && Math.abs(normalizedAngle - lastShapeChangeAngleRef.current) > threshold * 2) {
+      // 현재 도형 타입과 반대로 변경
+      const currentShapeType = settings.shapeType;
+      const newShapeType = currentShapeType === 'circle' ? 'rectangle' : 'circle';
+      
+      // 각 도형을 개별적으로 업데이트
+      const config: CircleGridConfig = {
+        rows: settings.rows,
+        cols: settings.cols,
+        shapeType: settings.shapeType,
+        circleRadius: settings.circleRadius,
+        rectangleWidth: settings.rectangleWidth,
+        rectangleHeight: settings.rectangleHeight,
+        rowSpacing: settings.rowSpacing,
+        colSpacing: settings.colSpacing
+      };
+      
+      circlesRef.current.forEach(circle => {
+        if (circle.currentShapeType === currentShapeType) {
+          updateShapeGeometry(
+            circle,
+            config,
+            newShapeType,
+            settings.borderThickness,
+            settings.enableWidthScaling,
+            settings.widthScaleFactor
+          );
+        }
+      });
+      
+      // 전역 설정도 업데이트
+      handleSettingChange('shapeType', newShapeType);
+      lastShapeChangeAngleRef.current = normalizedAngle;
+      // 도형 변경 시 로그 제거
+    }
+  }, [settings, handleSettingChange]);
+
+  // Y축 회전 애니메이션 함수
+  const animateRotationY = useCallback(() => {
+    if (isRotationAnimating) {
+      // 이미 애니메이션 중이면 중지
+      if (rotationAnimationRef.current) {
+        cancelAnimationFrame(rotationAnimationRef.current);
+      }
+      setIsRotationAnimating(false);
+      // 애니메이션 중지 시 로그 제거
+      return;
+    }
+
+    setIsRotationAnimating(true);
+    const startRotation = settings.rotationY;
+    const targetRotation = startRotation + Math.PI * 2; // 360도 회전
+    const baseDuration = 4000; // 기본 4초 애니메이션
+    const duration = baseDuration / settings.animationSpeed; // 속도에 따라 지속시간 조절
+    const startTime = Date.now();
+    
+    // 애니메이션 시작 로그 제거
+
+    const animate = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      
+      // easeInOutCubic 이징 함수
+      const easeProgress = progress < 0.5 
+        ? 4 * progress * progress * progress 
+        : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+      
+      const currentRotation = startRotation + (targetRotation - startRotation) * easeProgress;
+      
+      // 도형 변경 체크
+      checkAndChangeShape(currentRotation);
+      
+      handleSettingChange('rotationY', currentRotation);
+      
+      if (progress < 1) {
+        rotationAnimationRef.current = requestAnimationFrame(animate);
+      } else {
+        setIsRotationAnimating(false);
+        // 애니메이션 완료 로그 제거
+      }
     };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(settingsToSave));
-  }, [settings, cameraControlType]);
+    
+    animate();
+  }, [settings.rotationY, settings.animationSpeed, isRotationAnimating, handleSettingChange, checkAndChangeShape]);
 
-
-
+  // getConfig 함수를 먼저 정의 (다른 함수들이 사용하기 때문)
   const getConfig = useCallback((): CircleGridConfig => ({
     rows: settings.rows,
     cols: settings.cols,
@@ -775,6 +866,17 @@ const ThreeScene: React.FC = () => {
     rowSpacing: settings.rowSpacing,
     colSpacing: settings.colSpacing
   }), [settings]);
+
+  // 모든 설정 저장 (카메라 위치 제외, 카메라 컨트롤 타입 포함)
+  const saveSettings = useCallback(() => {
+    const { cameraPositionX, cameraPositionY, cameraPositionZ, ...settingsWithoutCamera } = settings;
+    const settingsToSave = {
+      ...settingsWithoutCamera,
+      colorSeed: colorSeedRef.current,
+      cameraControlType: cameraControlType
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(settingsToSave));
+  }, [settings, cameraControlType]);
 
   const initScene = () => {
     initSceneWithControlType(cameraControlType);
@@ -980,6 +1082,8 @@ const ThreeScene: React.FC = () => {
       
       sceneRef.current!.add(group);
       circle.mesh = group;
+      // 현재 도형 타입 초기화
+      circle.currentShapeType = getConfig().shapeType;
     });
 
     circlesRef.current = circles;
@@ -1310,6 +1414,9 @@ const ThreeScene: React.FC = () => {
       if (animationIdRef.current) {
         cancelAnimationFrame(animationIdRef.current);
       }
+      if (rotationAnimationRef.current) {
+        cancelAnimationFrame(rotationAnimationRef.current);
+      }
       if (controlsRef.current) {
         controlsRef.current.dispose();
         controlsRef.current = null;
@@ -1461,6 +1568,8 @@ const ThreeScene: React.FC = () => {
         }}
         cameraControlType={cameraControlType}
         onCameraControlTypeChange={changeCameraControlType}
+        onAnimateRotationY={animateRotationY}
+        isRotationAnimating={isRotationAnimating}
       />
 
       {/* Toast Container */}

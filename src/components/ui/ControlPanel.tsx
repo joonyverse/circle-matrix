@@ -93,6 +93,8 @@ interface SliderProps {
     onChange: (value: number) => void;
     resetValue?: number;
     onReset?: () => void;
+    onAnimate?: () => void;
+    isAnimating?: boolean;
 }
 
 export const Slider: React.FC<SliderProps> = ({
@@ -103,7 +105,9 @@ export const Slider: React.FC<SliderProps> = ({
     step = 0.1,
     onChange,
     resetValue,
-    onReset
+    onReset,
+    onAnimate,
+    isAnimating = false
 }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [inputValue, setInputValue] = useState(value.toString());
@@ -180,6 +184,20 @@ export const Slider: React.FC<SliderProps> = ({
                             title="Reset to default"
                         >
                             <RotateCcw className="w-3 h-3" />
+                        </button>
+                    )}
+                    {onAnimate && (
+                        <button
+                            onClick={onAnimate}
+                            disabled={isAnimating}
+                            className={`text-xs px-2 py-1 rounded smooth-transition ${
+                                isAnimating 
+                                    ? 'bg-red-500 text-white cursor-not-allowed' 
+                                    : 'bg-[#34C759] text-white hover:bg-[#28A745]'
+                            }`}
+                            title={isAnimating ? "Stop animation" : "Start rotation animation"}
+                        >
+                            {isAnimating ? '⏹️' : '▶️'}
                         </button>
                     )}
                 </div>
@@ -683,6 +701,8 @@ interface ControlPanelProps {
     onToggleVisibility: () => void;
     cameraControlType: 'trackball' | 'orbit';
     onCameraControlTypeChange: (type: 'trackball' | 'orbit') => void;
+    onAnimateRotationY: () => void;
+    isRotationAnimating: boolean;
 }
 
 export const ControlPanel: React.FC<ControlPanelProps> = ({
@@ -697,7 +717,9 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
     isVisible,
     onToggleVisibility,
     cameraControlType,
-    onCameraControlTypeChange
+    onCameraControlTypeChange,
+    onAnimateRotationY,
+    isRotationAnimating
 }) => {
     return (
         <>
@@ -981,6 +1003,8 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                                     onChange={(value) => onSettingChange('rotationY', value)}
                                     resetValue={0}
                                     onReset={() => onSettingChange('rotationY', 0)}
+                                    onAnimate={onAnimateRotationY}
+                                    isAnimating={isRotationAnimating}
                                 />
                                 <Slider
                                     label="Rotation Z"
@@ -991,6 +1015,16 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                                     onChange={(value) => onSettingChange('rotationZ', value)}
                                     resetValue={0}
                                     onReset={() => onSettingChange('rotationZ', 0)}
+                                />
+                                <Slider
+                                    label="Animation Speed"
+                                    value={settings.animationSpeed}
+                                    min={0.1}
+                                    max={5.0}
+                                    step={0.1}
+                                    onChange={(value) => onSettingChange('animationSpeed', value)}
+                                    resetValue={1.0}
+                                    onReset={() => onSettingChange('animationSpeed', 1.0)}
                                 />
                             </Folder>
                         </Folder>
