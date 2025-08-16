@@ -11,11 +11,9 @@ import {
   updateShapeGeometry
 } from '../utils/circleGeometry';
 import { isDarkBackground } from '../utils/colorUtils';
-import ProjectManager from './ProjectManager';
-import SaveProjectModal from './SaveProjectModal';
-import DeleteConfirmModal from './DeleteConfirmModal';
-import { CaptureListModal } from './CaptureListModal';
-import { ControlPanel } from './ui/ControlPanel';
+import { ProjectManager } from './project';
+import { SaveProjectModal, DeleteConfirmModal, CaptureListModal } from './modals';
+import { ControlPanel } from './controls';
 import { Modal } from './ui/Modal';
 import { ToastContainer, useToast } from './ui/Toast';
 

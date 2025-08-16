@@ -1,10 +1,10 @@
 import React from 'react';
-import ThreeScene from './components/ThreeScene';
+import ThreeSceneRefactored from './components/ThreeSceneRefactored';
 
 function App() {
   return (
     <div className="w-full h-screen overflow-hidden">
-      <ThreeScene />
+      <ThreeSceneRefactored />
     </div>
   );
 }
