@@ -86,3 +86,70 @@ export interface CircleGridConfig {
   rowSpacing: number;
   colSpacing: number;
 }
+
+export interface ColorRGBA {
+  r: number;
+  g: number;
+  b: number;
+  a: number;
+}
+
+export interface AppSettings {
+  // Structure
+  rows: number;
+  cols: number;
+  rowSpacing: number;
+  colSpacing: number;
+  shapeType: ShapeType;
+  circleRadius: number;
+  rectangleWidth: number;
+  rectangleHeight: number;
+  enableWidthScaling: boolean;
+  widthScaleFactor: number;
+  borderThickness: number;
+
+  // Transforms
+  cylinderAxis: 'x' | 'y';
+  cylinderCurvature: number;
+  cylinderRadius: number;
+  objectPositionX: number;
+  objectPositionY: number;
+  objectPositionZ: number;
+  rotationX: number;
+  rotationY: number;
+  rotationZ: number;
+
+  // Animation
+  animationSpeed: number;
+
+  // Appearance
+  backgroundColor: string;
+  frequency1: number;
+  syncColors1: boolean;
+  fill1: ColorRGBA;
+  stroke1: ColorRGBA;
+  frequency2: number;
+  syncColors2: boolean;
+  fill2: ColorRGBA;
+  stroke2: ColorRGBA;
+  frequency3: number;
+  syncColors3: boolean;
+  fill3: ColorRGBA;
+  stroke3: ColorRGBA;
+
+  // Camera
+  cameraPositionX: number;
+  cameraPositionY: number;
+  cameraPositionZ: number;
+  cameraControlType: 'trackball' | 'orbit';
+
+  // Color seed
+  colorSeed?: number;
+}
+
+export interface ProjectV2 {
+  name: string;
+  settings: AppSettings;
+  timestamp: number;
+  previewImage?: string;
+}

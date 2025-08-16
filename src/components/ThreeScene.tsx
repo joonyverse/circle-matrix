@@ -18,7 +18,7 @@ import { CaptureListModal } from './CaptureListModal';
 import { ControlPanel } from './ui/ControlPanel';
 import { Modal } from './ui/Modal';
 import { ToastContainer, useToast } from './ui/Toast';
-// leva 관련 import 및 코드 제거 완료
+
 
 interface Project {
   name: string;
@@ -73,12 +73,15 @@ const ThreeScene: React.FC = () => {
   const STORAGE_KEY = 'circle-matrix-settings';
   const PROJECTS_KEY = 'circle-matrix-projects';
 
-  // 랜덤 시드 관리
+  // 색상 시드 관리
   const colorSeedRef = useRef<number>(Math.floor(Math.random() * 1000000));
 
-  // 기본값 정의
+  /**
+   * 애플리케이션 기본 설정값
+   * 모든 설정의 초기값을 정의합니다.
+   */
   const defaultSettings = {
-    // Structure
+    // 구조 설정
     rows: 3,
     cols: 12,
     rowSpacing: 2,
@@ -91,7 +94,7 @@ const ThreeScene: React.FC = () => {
     widthScaleFactor: 2.0,
     borderThickness: 0.15,
 
-    // Transforms
+    // 변환 설정
     cylinderAxis: 'y' as const,
     cylinderCurvature: 0,
     cylinderRadius: 8,
@@ -102,48 +105,50 @@ const ThreeScene: React.FC = () => {
     rotationY: 0,
     rotationZ: 0,
 
-    // Appearance - Light theme colors
+    // 외관 - 라이트 테마 색상
     backgroundColor: '#f5f7fa',
     frequency1: 1,
     syncColors1: false,
     fill1: { r: 0, g: 122, b: 255, a: 0.8 },
-    stroke1: { r: 0, g: 0, b: 0, a: 1.0 }, // 검은색 테두리
+    stroke1: { r: 0, g: 0, b: 0, a: 1.0 },
     frequency2: 1,
     syncColors2: false,
     fill2: { r: 52, g: 199, b: 89, a: 0.8 },
-    stroke2: { r: 0, g: 0, b: 0, a: 1.0 }, // 검은색 테두리
+    stroke2: { r: 0, g: 0, b: 0, a: 1.0 },
     frequency3: 1,
     syncColors3: false,
     fill3: { r: 175, g: 82, b: 222, a: 0.8 },
-    stroke3: { r: 0, g: 0, b: 0, a: 1.0 }, // 검은색 테두리
+    stroke3: { r: 0, g: 0, b: 0, a: 1.0 },
 
-    // Animation settings
-    animationSpeed: 1.0, // 1.0 = normal speed, 2.0 = 2x faster, 0.5 = 2x slower
+    // 애니메이션 설정
+    animationSpeed: 1.0,
 
-    // Camera (only position, settings use default values)
+    // 카메라 설정
     cameraPositionX: 0,
     cameraPositionY: 0,
     cameraPositionZ: 15,
     cameraControlType: 'orbit' as const
   };
 
-  // localStorage에서 설정 로드하는 함수
+  /**
+   * localStorage에서 저장된 설정을 로드합니다.
+   */
   const getDefaultValues = () => {
-    // localStorage에서 저장된 값이 있으면 로드
+
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const settings = JSON.parse(saved);
 
-        // 저장된 색상 시드가 있으면 적용
+
         if (settings.colorSeed !== undefined) {
           colorSeedRef.current = settings.colorSeed;
         }
 
-        // 저장된 값들을 기본값과 병합
+
         const mergedSettings = { ...defaultSettings, ...settings };
 
-        // 카메라 컨트롤 타입이 저장되어 있으면 적용
+
         if (settings.cameraControlType) {
           setCameraControlType(settings.cameraControlType);
         }
@@ -157,11 +162,11 @@ const ThreeScene: React.FC = () => {
     return defaultSettings;
   };
 
-  // 설정 상태 관리
+  // 설정 상태
   const [settings, setSettings] = useState(getDefaultValues);
   const [showControlPanel, setShowControlPanel] = useState(true);
 
-  // 카메라 설정 기본값 (UI에서 제거됨)
+  // 카메라 기본값
   const cameraDefaults = useMemo(() => ({
     cameraMinDistance: 5,
     cameraMaxDistance: 50,
@@ -172,18 +177,14 @@ const ThreeScene: React.FC = () => {
     dynamicDampingFactor: 0.1
   }), []);
 
-
-
-
-
-
-
   // 설정 변경 핸들러
   const handleSettingChange = useCallback((key: string, value: any) => {
     setSettings(prev => ({ ...prev, [key]: value }));
   }, []);
 
-  // 모든 설정 리셋
+  /**
+   * 모든 설정을 기본값으로 리셋합니다.
+   */
   const handleResetAll = useCallback(() => {
     setSettings(defaultSettings);
     colorSeedRef.current = Math.floor(Math.random() * 1000000);
@@ -192,13 +193,17 @@ const ThreeScene: React.FC = () => {
     toast.success('All settings have been reset to default values!');
   }, []);
 
-  // 카메라 리셋
+  /**
+   * 카메라 위치를 기본값으로 리셋합니다.
+   */
   const handleResetCamera = useCallback(() => {
     resetCameraPosition();
     toast.success('Camera position has been reset to default!');
   }, []);
 
-  // 색상 재생성
+  /**
+   * 새로운 랜덤 시드로 색상을 재생성합니다.
+   */
   const handleRegenerateColors = useCallback(() => {
     colorSeedRef.current = Math.floor(Math.random() * 1000000);
     createCircles();
@@ -206,7 +211,9 @@ const ThreeScene: React.FC = () => {
     toast.success('Colors have been regenerated with a new random seed!');
   }, []);
 
-  // URL 공유
+  /**
+   * 현재 설정을 URL로 공유합니다.
+   */
   const handleShareURL = useCallback(async () => {
     const currentSettings = getCurrentSettings();
     const projectData = encodeURIComponent(JSON.stringify(currentSettings));
@@ -258,7 +265,6 @@ const ThreeScene: React.FC = () => {
 
   // 설정을 적용하는 함수 (카메라 위치 제외)
   const applySettings = useCallback((newSettings: Record<string, unknown>) => {
-    console.log('🔧 applySettings called with:', Object.keys(newSettings));
     setIsLoadingProject(true);
 
     // 색상 시드 적용
@@ -567,10 +573,10 @@ const ThreeScene: React.FC = () => {
 
   // 캡처 기능
   const handleCapture = useCallback(async () => {
-    console.log('🎯 Capture started');
+
 
     if (!rendererRef.current || !sceneRef.current || !cameraRef.current) {
-      console.error('❌ Renderer, Scene, or Camera not available');
+
       toast.error('Renderer not available');
       return;
     }
@@ -578,34 +584,32 @@ const ThreeScene: React.FC = () => {
     try {
       // 현재 렌더러의 캔버스를 캡처
       const canvas = rendererRef.current.domElement;
-      console.log('🎯 Canvas found:', canvas);
-      console.log('🎯 Canvas size:', canvas.width, 'x', canvas.height);
+
 
       // 렌더러를 한 번 더 렌더링하여 최신 상태 캡처
       rendererRef.current.render(sceneRef.current, cameraRef.current);
 
       // 캔버스를 blob으로 변환
       canvas.toBlob(async (blob) => {
-        console.log('🎯 Blob created:', blob);
+
 
         if (!blob) {
-          console.error('❌ Failed to create blob');
+
           toast.error('Failed to capture image');
           return;
         }
 
-        console.log('🎯 Blob size:', blob.size, 'bytes');
-        console.log('🎯 Blob type:', blob.type);
+
 
         try {
           // 클립보드에 복사
-          console.log('🎯 Attempting to copy to clipboard...');
+
           await navigator.clipboard.write([
             new ClipboardItem({
               'image/png': blob
             })
           ]);
-          console.log('✅ Successfully copied to clipboard');
+
 
           // 임시로 이미지를 화면에 표시하여 확인 (디버깅용)
           const url = URL.createObjectURL(blob);
@@ -715,9 +719,9 @@ const ThreeScene: React.FC = () => {
 
           toast.success('Screenshot copied to clipboard!');
         } catch (clipboardError) {
-          console.error('❌ Clipboard copy failed:', clipboardError);
+
           // 클립보드 복사 실패 시 다운로드
-          console.log('🎯 Falling back to download...');
+
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;
@@ -730,7 +734,7 @@ const ThreeScene: React.FC = () => {
         }
       }, 'image/png');
     } catch (error) {
-      console.error('❌ Capture error:', error);
+
       toast.error('Failed to capture screenshot');
     }
   }, [toast]);
@@ -1008,45 +1012,21 @@ const ThreeScene: React.FC = () => {
           strokeColor = settings.syncColors1 ? rgbToCss(settings.fill1) : rgbToCss(settings.stroke1);
           fillOpacity = settings.fill1.a;
           strokeOpacity = settings.syncColors1 ? settings.fill1.a : settings.stroke1.a;
-          if (circle.columnIndex === 0 && circle.rowIndex === 0) {
-            console.log('Color Group 0:', {
-              syncColors: settings.syncColors1,
-              fillAlpha: settings.fill1.a,
-              strokeAlpha: strokeOpacity,
-              fillColor,
-              strokeColor
-            });
-          }
+
           break;
         case 1:
           fillColor = rgbToCss(settings.fill2);
           strokeColor = settings.syncColors2 ? rgbToCss(settings.fill2) : rgbToCss(settings.stroke2);
           fillOpacity = settings.fill2.a;
           strokeOpacity = settings.syncColors2 ? settings.fill2.a : settings.stroke2.a;
-          if (circle.columnIndex === 0 && circle.rowIndex === 0) {
-            console.log('Color Group 1:', {
-              syncColors: settings.syncColors2,
-              fillAlpha: settings.fill2.a,
-              strokeAlpha: strokeOpacity,
-              fillColor,
-              strokeColor
-            });
-          }
+
           break;
         case 2:
           fillColor = rgbToCss(settings.fill3);
           strokeColor = settings.syncColors3 ? rgbToCss(settings.fill3) : rgbToCss(settings.stroke3);
           fillOpacity = settings.fill3.a;
           strokeOpacity = settings.syncColors3 ? settings.fill3.a : settings.stroke3.a;
-          if (circle.columnIndex === 0 && circle.rowIndex === 0) {
-            console.log('Color Group 2:', {
-              syncColors: settings.syncColors3,
-              fillAlpha: settings.fill3.a,
-              strokeAlpha: strokeOpacity,
-              fillColor,
-              strokeColor
-            });
-          }
+
           break;
         default:
           fillColor = rgbToCss(settings.fill1);

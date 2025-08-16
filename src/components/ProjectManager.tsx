@@ -55,21 +55,21 @@ const ProjectManager: React.FC<ProjectManagerProps> = ({
   const [isLoading, setIsLoading] = useState<string | null>(null);
 
   const handleLoadProject = (name: string) => {
-    console.log('🎯 ProjectManager: handleLoadProject called with:', name);
+
 
     // 이미 로딩 중이거나 같은 프로젝트를 클릭한 경우 무시
     if (isLoading || name === activeProject) {
-      console.log('🎯 ProjectManager: Ignoring click - isLoading:', isLoading, 'activeProject:', activeProject);
+
       return;
     }
 
     setIsLoading(name);
-    console.log('🎯 ProjectManager: Loading project:', name);
+
 
     try {
       toast.success(`Loading project "${name}"...`);
       const project = onLoadProject(name);
-      console.log('🎯 ProjectManager: Load result:', project ? 'success' : 'failed');
+
       if (project) {
         toast.success(`Project "${name}" loaded successfully.`);
       } else {
@@ -92,7 +92,7 @@ const ProjectManager: React.FC<ProjectManagerProps> = ({
 
   const handleStartEdit = (projectName: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    console.log('🎯 ProjectManager: Starting edit for project:', projectName);
+
     setEditingProject(projectName);
     setEditingName(projectName);
   };
