@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal } from './ui/Modal';
+import { Modal } from '../ui/Modal';
 import { Trash2, AlertTriangle } from 'lucide-react';
 
 interface DeleteConfirmModalProps {

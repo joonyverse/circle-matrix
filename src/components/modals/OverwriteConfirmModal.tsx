@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal } from './ui/Modal';
+import { Modal } from '../ui/Modal';
 import { AlertTriangle, Save } from 'lucide-react';
 
 interface OverwriteConfirmModalProps {

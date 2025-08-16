@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Download, Trash2, Share2 } from 'lucide-react';
-import { Modal } from './ui/Modal';
-import { Button } from './ui/ControlPanel';
+import { Modal } from '../ui/Modal';
+import { Button } from '../controls/ControlPanel';
 import JSZip from 'jszip';
 
 interface CaptureItem {
