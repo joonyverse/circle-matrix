@@ -1,6 +1,6 @@
 import { useRef, useEffect, useCallback } from 'react';
 import { TrackballControls, OrbitControls } from 'three-stdlib';
-import { KEYBOARD_SHORTCUTS, CAMERA_DEFAULTS } from '../constants';
+import { KEYBOARD_SHORTCUTS, CAMERA_DEFAULTS, isKeyMatch } from '../constants';
 
 interface UseSmoothCameraControlsOptions {
   controlsRef: React.MutableRefObject<TrackballControls | OrbitControls | null>;
@@ -52,23 +52,29 @@ export const useSmoothCameraControls = ({
     let targetVelocityY = 0;
     let targetVelocityZ = 0;
 
-    // WASD 키 확인
-    if (keys[KEYBOARD_SHORTCUTS.CAMERA_LEFT]) {
+    // WASD + 한글 키 확인
+    // 왼쪽 (A/ᄀ)
+    if (keys['KeyA'] || keys['ᄀ']) {
       targetVelocityX = -moveSpeed;
     }
-    if (keys[KEYBOARD_SHORTCUTS.CAMERA_RIGHT]) {
+    // 오른쪽 (D/ᄋ)
+    if (keys['KeyD'] || keys['ᄋ']) {
       targetVelocityX = moveSpeed;
     }
-    if (keys[KEYBOARD_SHORTCUTS.CAMERA_FORWARD]) {
+    // 앞 (W/ᄉ)
+    if (keys['KeyW'] || keys['ᄉ']) {
       targetVelocityZ = -moveSpeed;
     }
-    if (keys[KEYBOARD_SHORTCUTS.CAMERA_BACKWARD]) {
+    // 뒤 (S/ᄂ)
+    if (keys['KeyS'] || keys['ᄂ']) {
       targetVelocityZ = moveSpeed;
     }
-    if (keys[KEYBOARD_SHORTCUTS.CAMERA_UP]) {
+    // 위 (Q/ㅂ)
+    if (keys['KeyQ'] || keys['ㅂ']) {
       targetVelocityY = moveSpeed;
     }
-    if (keys[KEYBOARD_SHORTCUTS.CAMERA_DOWN]) {
+    // 아래 (E/ㄷ)
+    if (keys['KeyE'] || keys['ㄷ']) {
       targetVelocityY = -moveSpeed;
     }
 
@@ -119,19 +125,21 @@ export const useSmoothCameraControls = ({
 
     if (isInputMode || !isEnabled) return;
 
-    // WASD + QE 키만 처리
+    // WASD + QE + 한글 키 처리
     const cameraKeys = [
-      KEYBOARD_SHORTCUTS.CAMERA_FORWARD,
-      KEYBOARD_SHORTCUTS.CAMERA_BACKWARD,
-      KEYBOARD_SHORTCUTS.CAMERA_LEFT,
-      KEYBOARD_SHORTCUTS.CAMERA_RIGHT,
-      KEYBOARD_SHORTCUTS.CAMERA_UP,
-      KEYBOARD_SHORTCUTS.CAMERA_DOWN,
+      'KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyQ', 'KeyE', // 영어
+      'ᄉ', 'ᄀ', 'ᄂ', 'ᄋ', 'ㅂ', 'ㄷ', // 한글
     ];
 
-    if (cameraKeys.includes(event.code)) {
+    // 코드기반(KeyA, KeyW 등) 또는 문자기반(ᄀ, ᄉ 등) 둘 다 지원
+    const isCodeMatch = cameraKeys.includes(event.code);
+    const isKeyMatch = cameraKeys.includes(event.key);
+    
+    if (isCodeMatch || isKeyMatch) {
       event.preventDefault();
-      updateKeyState(event.code, true);
+      // 코드 우선, 없으면 키 사용
+      const keyToStore = isCodeMatch ? event.code : event.key;
+      updateKeyState(keyToStore, true);
     }
   }, [isEnabled, updateKeyState]);
 
@@ -139,16 +147,17 @@ export const useSmoothCameraControls = ({
     if (!isEnabled) return;
 
     const cameraKeys = [
-      KEYBOARD_SHORTCUTS.CAMERA_FORWARD,
-      KEYBOARD_SHORTCUTS.CAMERA_BACKWARD,
-      KEYBOARD_SHORTCUTS.CAMERA_LEFT,
-      KEYBOARD_SHORTCUTS.CAMERA_RIGHT,
-      KEYBOARD_SHORTCUTS.CAMERA_UP,
-      KEYBOARD_SHORTCUTS.CAMERA_DOWN,
+      'KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyQ', 'KeyE', // 영어
+      'ᄉ', 'ᄀ', 'ᄂ', 'ᄋ', 'ㅂ', 'ㄷ', // 한글
     ];
 
-    if (cameraKeys.includes(event.code)) {
-      updateKeyState(event.code, false);
+    // keyDown과 동일한 로직
+    const isCodeMatch = cameraKeys.includes(event.code);
+    const isKeyMatch = cameraKeys.includes(event.key);
+    
+    if (isCodeMatch || isKeyMatch) {
+      const keyToStore = isCodeMatch ? event.code : event.key;
+      updateKeyState(keyToStore, false);
     }
   }, [isEnabled, updateKeyState]);
 

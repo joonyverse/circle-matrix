@@ -48,20 +48,43 @@ export const STORAGE_KEYS = {
   CAPTURES: 'circle-matrix-captures',
 } as const;
 
-// 키보드 단축키
+// 키보드 단축키 (영어/한글 둘 다 지원)
 export const KEYBOARD_SHORTCUTS = {
+  // 저장 (Ctrl+S)
   SAVE: 's',
-  ZEN_MODE: 'z',
-  ZEN_MODE_UPPER: 'Z',
-  HELP_1: '?',
-  HELP_2: '/',
+  
+  // Zen 모드 토글 (Z/ㅋ)
+  ZEN_MODE: ['z', 'Z', 'ㅋ'], // 영어 z, Z + 한글 ㅋ
+  
+  // 도움말 토글 (?//)
+  HELP: ['?', '/'],
+  
+  // 카메라 이동 (WASD + ᄉᄂᄀᄋ + QE + ㅂㄷ)
+  CAMERA_KEYS: {
+    FORWARD: ['KeyW', 'ᄉ'], // W, ᄉ
+    BACKWARD: ['KeyS', 'ᄂ'], // S, ᄂ  
+    LEFT: ['KeyA', 'ᄀ'], // A, ᄀ
+    RIGHT: ['KeyD', 'ᄋ'], // D, ᄋ
+    UP: ['KeyQ', 'ㅂ'], // Q, ㅂ
+    DOWN: ['KeyE', 'ㄷ'], // E, ㄷ
+  },
+  
+  // 코드 기반 카메라 컨트롤 (기존 호환성)
   CAMERA_FORWARD: 'KeyW',
-  CAMERA_BACKWARD: 'KeyS',
+  CAMERA_BACKWARD: 'KeyS', 
   CAMERA_LEFT: 'KeyA',
   CAMERA_RIGHT: 'KeyD',
   CAMERA_UP: 'KeyQ',
   CAMERA_DOWN: 'KeyE',
 } as const;
+
+// 키 매핑 도움 함수
+export const isKeyMatch = (key: string, targetKeys: string | string[]): boolean => {
+  if (typeof targetKeys === 'string') {
+    return key === targetKeys;
+  }
+  return targetKeys.includes(key);
+};
 
 // 프로젝트 관리 상수
 export const PROJECT_CONSTANTS = {

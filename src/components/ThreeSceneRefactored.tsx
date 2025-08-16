@@ -16,7 +16,7 @@ import {
 } from './modals';
 import { Modal } from './ui/Modal';
 import { ToastContainer, useToast } from './ui/Toast';
-import { KEYBOARD_SHORTCUTS, CAMERA_DEFAULTS } from '../constants';
+import { KEYBOARD_SHORTCUTS, CAMERA_DEFAULTS, isKeyMatch } from '../constants';
 
 interface Project {
   name: string;
@@ -356,8 +356,8 @@ const ThreeSceneRefactored: React.FC = () => {
         return;
       }
 
-      // Z 키 Zen 모드 토글
-      if (event.key === KEYBOARD_SHORTCUTS.ZEN_MODE || event.key === KEYBOARD_SHORTCUTS.ZEN_MODE_UPPER) {
+      // Z 키 Zen 모드 토글 (Z/ㅋ)
+      if (isKeyMatch(event.key, KEYBOARD_SHORTCUTS.ZEN_MODE)) {
         event.preventDefault();
         toggleZenMode();
         // Zen 모드 변경 시 카메라 이동 중지
@@ -365,8 +365,8 @@ const ThreeSceneRefactored: React.FC = () => {
         return;
       }
 
-      // ? 키 단축키 도움말 토글
-      if (event.key === KEYBOARD_SHORTCUTS.HELP_1 || event.key === KEYBOARD_SHORTCUTS.HELP_2) {
+      // ? 키 단축키 도움말 토글 (?//)
+      if (isKeyMatch(event.key, KEYBOARD_SHORTCUTS.HELP)) {
         event.preventDefault();
         setShowShortcutsGuide(prev => !prev);
         return;
